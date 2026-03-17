@@ -1,0 +1,169 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum PlanType {
+  FREE
+  BASIC
+  PRO
+}
+
+model User {
+  id            String         @id @default(uuid())
+  name          String
+  email         String         @unique
+  password      String
+  role          UserRole       @default(USER)
+  plan          PlanType       @default(FREE)
+  isVerified    Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  refreshTokens RefreshToken[]
+  documents     Document[]
+  exams         Exam[]
+  patterns      Pattern[]
+  otpCodes      OtpCode[]
+  passwordResets PasswordReset[]
+
+  @@map("users")
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  userId    String
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("otp_codes")
+}
+
+model PasswordReset {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_resets")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Document {
+  id            String   @id @default(uuid())
+  userId        String
+  fileName      String
+  fileType      String
+  fileUrl       String
+  fileSize      Int
+  subject       String?  // Subject classification (e.g., "Physics", "Mathematics")
+  uploadMode    String   @default("fullbook") // 'chapter' | 'fullbook'
+  chapterNumber Int?     // Chapter number (for chapter uploads)
+  chapterName   String?  // Chapter name (for chapter uploads)
+  uploadDate    DateTime @default(now())
+  processed     Boolean  @default(false)
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chunks        DocumentChunk[]
+  chapters      Chapter[]
+
+  @@index([userId, subject, chapterNumber])
+  @@map("documents")
+}
+
+model DocumentChunk {
+  id          String   @id @default(uuid())
+  documentId  String
+  chunkText   String   @db.Text
+  chunkIndex  Int
+  chapter     String?
+  topic       String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("document_chunks")
+}
+
+model Exam {
+  id            String   @id @default(uuid())
+  userId        String
+  subject       String
+  class         String
+  section       String
+  examType      String   // 'mid-term' | 'quiz' | 'practical' | 'final'
+  chapterStart  Int?     // NULL for final exams
+  chapterEnd    Int?     // NULL for final exams
+  patternId     String?
+  topics        String[]
+  examContent   Json
+  fileUrls      String[] // Array of generated file URLs
+  createdAt     DateTime @default(now())
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pattern       Pattern? @relation(fields: [patternId], references: [id])
+
+  @@map("exams")
+}
+
+model Pattern {
+  id          String   @id @default(uuid())
+  userId      String
+  name        String
+  subject     String
+  totalMarks  Int
+  duration    Int      // Duration in minutes
+  sections    Json     // Array of section configurations
+  lastUsed    DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exams       Exam[]
+
+  @@map("patterns")
+}
+
+model Chapter {
+  id            String   @id @default(uuid())
+  documentId    String
+  chapterNumber Int
+  chapterName   String
+  startPosition Int
+  endPosition   Int
+  createdAt     DateTime @default(now())
+  
+  document      Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, chapterNumber])
+  @@map("chapters")
+}

@@ -1,0 +1,29 @@
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, {
+    bodyParser: true,
+    rawBody: true,
+  });
+  
+  // Increase body size limit for large file uploads
+  app.use(require('express').json({ limit: '100mb' }));
+  app.use(require('express').urlencoded({ limit: '100mb', extended: true }));
+  
+  app.enableCors();
+  app.setGlobalPrefix('api');
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
+
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+  console.log(`🚀 Server running on http://localhost:${port}`);
+}
+bootstrap();
