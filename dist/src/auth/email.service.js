@@ -81,7 +81,15 @@ let EmailService = class EmailService {
         </div>
       `,
         };
-        await this.transporter.sendMail(mailOptions);
+        try {
+            const info = await this.transporter.sendMail(mailOptions);
+            console.log('✅ Verification email sent successfully:', info.messageId);
+            console.log('📧 Email sent to:', email);
+        }
+        catch (error) {
+            console.error('❌ Failed to send verification email:', error);
+            throw error;
+        }
     }
     async sendPasswordResetEmail(email, name, resetToken) {
         const resetUrl = `${this.configService.get('FRONTEND_URL')}/reset-password?token=${resetToken}`;
@@ -108,7 +116,15 @@ let EmailService = class EmailService {
         </div>
       `,
         };
-        await this.transporter.sendMail(mailOptions);
+        try {
+            const info = await this.transporter.sendMail(mailOptions);
+            console.log('✅ Password reset email sent successfully:', info.messageId);
+            console.log('📧 Email sent to:', email);
+        }
+        catch (error) {
+            console.error('❌ Failed to send password reset email:', error);
+            throw error;
+        }
     }
 };
 exports.EmailService = EmailService;

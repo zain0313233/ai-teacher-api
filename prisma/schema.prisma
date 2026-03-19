@@ -35,6 +35,7 @@ model User {
   documents     Document[]
   exams         Exam[]
   patterns      Pattern[]
+  pastPapers    PastPaper[]
   otpCodes      OtpCode[]
   passwordResets PasswordReset[]
 
@@ -166,4 +167,96 @@ model Chapter {
 
   @@unique([documentId, chapterNumber])
   @@map("chapters")
+}
+
+model PastPaper {
+  id          String   @id @default(uuid())
+  userId      String
+  subject     String
+  examType    String   // 'quiz', 'mid-term', 'final'
+  year        Int
+  board       String   // "Punjab Board"
+  class       String
+  fileName    String
+  fileUrl     String
+  fileSize    Int
+  processed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions   PastPaperQuestion[]
+
+  @@index([userId, subject, year])
+  @@index([board, class, subject])
+  @@map("past_papers")
+}
+
+model PastPaperQuestion {
+  id              String   @id @default(uuid())
+  pastPaperId     String
+  questionText    String   @db.Text
+  
+  // Pattern Signature Fields 🔥
+  concept         String   // "Quadratic Equations", "Trigonometry"
+  method          String   // "Factorization", "Formula", "Substitution"
+  structure       String   // "Standard Form", "Word Problem", "MCQ Concept"
+  
+  // Classification
+  questionType    String   // "MCQ", "Short", "Long"
+  chapter         Int?
+  marks           Int
+  difficulty      String   // "Easy", "Medium", "Hard"
+  
+  // Intelligence Fields
+  frequency       Int      @default(1)
+  lastAppeared    Int      // Year
+  consistencyScore Float   @default(0)
+  
+  createdAt       DateTime @default(now())
+  
+  pastPaper       PastPaper @relation(fields: [pastPaperId], references: [id], onDelete: Cascade)
+  cluster         PatternCluster? @relation(fields: [clusterId], references: [id])
+  clusterId       String?
+
+  @@index([chapter])
+  @@index([concept, method, structure])
+  @@map("past_paper_questions")
+}
+
+model PatternCluster {
+  id                String   @id @default(uuid())
+  
+  // Pattern Signature
+  concept           String
+  method            String
+  structure         String
+  difficulty        String
+  
+  // Context
+  subject           String
+  board             String
+  class             String
+  chapter           Int?
+  
+  // Aggregated Intelligence
+  totalFrequency    Int      @default(0)
+  priorityScore     Float    @default(0)
+  consistencyBonus  Float    @default(0)
+  trend             String   @default("STABLE") // "RISING", "STABLE", "DECLINING"
+  
+  // Years appeared
+  yearsAppeared     Int[]
+  
+  // Sample questions for reference
+  sampleQuestions   String[] @db.Text
+  
+  questions         PastPaperQuestion[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@unique([concept, method, structure, difficulty, subject, class])
+  @@index([concept, method, structure, difficulty])
+  @@index([priorityScore])
+  @@index([subject, class, chapter])
+  @@map("pattern_clusters")
 }

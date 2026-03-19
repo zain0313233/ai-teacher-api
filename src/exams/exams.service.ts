@@ -118,6 +118,8 @@ export class ExamsService {
           chapter_end: examData.chapterEnd,
           include_answer_layout: examData.includeAnswerKeyLayout,
           time_allowed: examData.timeAllowed,
+          use_past_paper_intelligence: examData.usePastPaperIntelligence || false,
+          generation_mode: examData.generationMode || 'normal',
         },
         {
           responseType: 'arraybuffer',
