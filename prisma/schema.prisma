@@ -260,3 +260,19 @@ model PatternCluster {
   @@index([subject, class, chapter])
   @@map("pattern_clusters")
 }
+
+model PatternCache {
+  id          String   @id @default(uuid())
+  board       String
+  country     String?
+  subject     String
+  class       String
+  year        String
+  pattern     Json     // Cached pattern data
+  cachedAt    DateTime @default(now())
+  expiresAt   DateTime // Cache expiry (e.g., 30 days)
+  
+  @@unique([board, subject, class, year])
+  @@index([board, subject, class])
+  @@map("pattern_cache")
+}

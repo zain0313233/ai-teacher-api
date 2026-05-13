@@ -9,6 +9,7 @@ import { DocumentsModule } from './documents/documents.module';
 import { ExamsModule } from './exams/exams.module';
 import { PatternsModule } from './patterns/patterns.module';
 import { PastPapersModule } from './past-papers/past-papers.module';
+import { ExamAssistantModule } from './exam-assistant/exam-assistant.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { PastPapersModule } from './past-papers/past-papers.module';
     ExamsModule,
     PatternsModule,
     PastPapersModule,
+    ExamAssistantModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -3,6 +3,8 @@ import { CreatePatternDto } from './dto/create-pattern.dto';
 import { UpdatePatternDto } from './dto/update-pattern.dto';
 export declare class PatternsService {
     private prisma;
+    private groqClient;
+    private tavilyClient;
     constructor(prisma: PrismaService);
     createPattern(userId: string, createPatternDto: CreatePatternDto): Promise<{
         name: string;
@@ -62,4 +64,10 @@ export declare class PatternsService {
         avgMarks: number;
         avgDuration: string;
     }>;
+    createPatternWithAI(userId: string, userPrompt: string): Promise<any>;
+    private detectContext;
+    private searchWebForPattern;
+    private parseSearchResults;
+    private validateAndCorrectPattern;
+    private generateCustomPattern;
 }

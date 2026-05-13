@@ -51,6 +51,10 @@ let PatternsController = class PatternsController {
         await this.patternsService.markAsUsed(id, req.user.id);
         return { message: 'Pattern marked as used' };
     }
+    async createPatternWithAI(req, body) {
+        const result = await this.patternsService.createPatternWithAI(req.user.id, body.prompt);
+        return result;
+    }
 };
 exports.PatternsController = PatternsController;
 __decorate([
@@ -108,6 +112,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], PatternsController.prototype, "markPatternAsUsed", null);
+__decorate([
+    (0, common_1.Post)('create-with-ai'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], PatternsController.prototype, "createPatternWithAI", null);
 exports.PatternsController = PatternsController = __decorate([
     (0, common_1.Controller)('patterns'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

@@ -64,4 +64,7 @@ export declare class PatternsController {
     markPatternAsUsed(req: any, id: string): Promise<{
         message: string;
     }>;
+    createPatternWithAI(req: any, body: {
+        prompt: string;
+    }): Promise<any>;
 }
