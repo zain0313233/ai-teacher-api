@@ -10,10 +10,10 @@ export declare class ExamsController {
             id: string;
             createdAt: Date;
             userId: string;
+            class: string;
             subject: string;
             examType: string;
             topics: string[];
-            class: string;
             section: string;
             chapterStart: number | null;
             chapterEnd: number | null;
@@ -29,10 +29,10 @@ export declare class ExamsController {
             id: string;
             createdAt: Date;
             userId: string;
+            class: string;
             subject: string;
             examType: string;
             topics: string[];
-            class: string;
             section: string;
             chapterStart: number | null;
             chapterEnd: number | null;
@@ -47,10 +47,10 @@ export declare class ExamsController {
             id: string;
             createdAt: Date;
             userId: string;
+            class: string;
             subject: string;
             examType: string;
             topics: string[];
-            class: string;
             section: string;
             chapterStart: number | null;
             chapterEnd: number | null;

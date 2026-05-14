@@ -14,11 +14,17 @@ export class DocumentsService {
     fileType: string,
     fileUrl: string,
     fileSize: number,
-    subject?: string,
-    chapterMetadata?: { chapterNumber: number; chapterName: string },
+    metadata: {
+      subject?: string;
+      level?: string;
+      class?: string;
+      educationSystem?: string;
+      documentType?: string;
+      chapterMetadata?: { chapterNumber: number; chapterName: string };
+    },
   ) {
     // Determine upload mode
-    const uploadMode = chapterMetadata ? 'chapter' : 'fullbook';
+    const uploadMode = metadata.chapterMetadata ? 'chapter' : 'fullbook';
     
     // Step 1: Save document to database immediately
     const document = await this.prisma.document.create({
@@ -28,10 +34,14 @@ export class DocumentsService {
         fileType,
         fileUrl,
         fileSize,
-        subject,
+        subject: metadata.subject,
+        level: metadata.level || 'matric',
+        class: metadata.class,
+        educationSystem: metadata.educationSystem || 'punjab_board',
+        documentType: metadata.documentType || 'textbook',
         uploadMode,
-        chapterNumber: chapterMetadata?.chapterNumber,
-        chapterName: chapterMetadata?.chapterName,
+        chapterNumber: metadata.chapterMetadata?.chapterNumber,
+        chapterName: metadata.chapterMetadata?.chapterName,
         processed: false, // Will be updated after processing
       },
     });
@@ -43,9 +53,8 @@ export class DocumentsService {
       fileUrl, 
       fileType, 
       userId, 
-      subject,
+      metadata,
       uploadMode,
-      chapterMetadata,
     );
 
     return document;
@@ -56,9 +65,15 @@ export class DocumentsService {
     fileUrl: string,
     fileType: string,
     userId: string,
-    subject?: string,
+    metadata: {
+      subject?: string;
+      level?: string;
+      class?: string;
+      educationSystem?: string;
+      documentType?: string;
+      chapterMetadata?: { chapterNumber: number; chapterName: string };
+    },
     uploadMode?: string,
-    chapterMetadata?: { chapterNumber: number; chapterName: string },
   ) {
     try {
       const payload: any = {
@@ -66,14 +81,18 @@ export class DocumentsService {
         file_url: fileUrl,
         file_type: fileType,
         user_id: userId,
-        subject: subject,
+        subject: metadata.subject,
+        level: metadata.level,
+        class: metadata.class,
+        education_system: metadata.educationSystem,
+        document_type: metadata.documentType,
         upload_mode: uploadMode,
       };
 
       // Add chapter metadata if available
-      if (chapterMetadata) {
-        payload.chapter_number = chapterMetadata.chapterNumber;
-        payload.chapter_name = chapterMetadata.chapterName;
+      if (metadata.chapterMetadata) {
+        payload.chapter_number = metadata.chapterMetadata.chapterNumber;
+        payload.chapter_name = metadata.chapterMetadata.chapterName;
       }
 
       const response = await axios.post(
@@ -90,23 +109,23 @@ export class DocumentsService {
       }
       
       // For chapter mode, store the single chapter
-      if (uploadMode === 'chapter' && chapterMetadata) {
+      if (uploadMode === 'chapter' && metadata.chapterMetadata) {
         await this.prisma.chapter.upsert({
           where: {
             documentId_chapterNumber: {
               documentId,
-              chapterNumber: chapterMetadata.chapterNumber,
+              chapterNumber: metadata.chapterMetadata.chapterNumber,
             },
           },
           create: {
             documentId,
-            chapterNumber: chapterMetadata.chapterNumber,
-            chapterName: chapterMetadata.chapterName,
+            chapterNumber: metadata.chapterMetadata.chapterNumber,
+            chapterName: metadata.chapterMetadata.chapterName,
             startPosition: 0,
             endPosition: 0,
           },
           update: {
-            chapterName: chapterMetadata.chapterName,
+            chapterName: metadata.chapterMetadata.chapterName,
           },
         });
       }

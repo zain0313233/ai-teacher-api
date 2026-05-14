@@ -22,8 +22,8 @@ let DocumentsService = class DocumentsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async uploadDocument(userId, fileName, fileType, fileUrl, fileSize, subject, chapterMetadata) {
-        const uploadMode = chapterMetadata ? 'chapter' : 'fullbook';
+    async uploadDocument(userId, fileName, fileType, fileUrl, fileSize, metadata) {
+        const uploadMode = metadata.chapterMetadata ? 'chapter' : 'fullbook';
         const document = await this.prisma.document.create({
             data: {
                 userId,
@@ -31,29 +31,37 @@ let DocumentsService = class DocumentsService {
                 fileType,
                 fileUrl,
                 fileSize,
-                subject,
+                subject: metadata.subject,
+                level: metadata.level || 'matric',
+                class: metadata.class,
+                educationSystem: metadata.educationSystem || 'punjab_board',
+                documentType: metadata.documentType || 'textbook',
                 uploadMode,
-                chapterNumber: chapterMetadata?.chapterNumber,
-                chapterName: chapterMetadata?.chapterName,
+                chapterNumber: metadata.chapterMetadata?.chapterNumber,
+                chapterName: metadata.chapterMetadata?.chapterName,
                 processed: false,
             },
         });
-        this.processDocumentAsync(document.id, fileUrl, fileType, userId, subject, uploadMode, chapterMetadata);
+        this.processDocumentAsync(document.id, fileUrl, fileType, userId, metadata, uploadMode);
         return document;
     }
-    async processDocumentAsync(documentId, fileUrl, fileType, userId, subject, uploadMode, chapterMetadata) {
+    async processDocumentAsync(documentId, fileUrl, fileType, userId, metadata, uploadMode) {
         try {
             const payload = {
                 document_id: documentId,
                 file_url: fileUrl,
                 file_type: fileType,
                 user_id: userId,
-                subject: subject,
+                subject: metadata.subject,
+                level: metadata.level,
+                class: metadata.class,
+                education_system: metadata.educationSystem,
+                document_type: metadata.documentType,
                 upload_mode: uploadMode,
             };
-            if (chapterMetadata) {
-                payload.chapter_number = chapterMetadata.chapterNumber;
-                payload.chapter_name = chapterMetadata.chapterName;
+            if (metadata.chapterMetadata) {
+                payload.chapter_number = metadata.chapterMetadata.chapterNumber;
+                payload.chapter_name = metadata.chapterMetadata.chapterName;
             }
             const response = await axios_1.default.post(`${this.fastApiUrl}/documents/process`, payload, {
                 timeout: 1800000,
@@ -61,23 +69,23 @@ let DocumentsService = class DocumentsService {
             if (response.data.chapters && response.data.chapters.length > 0) {
                 await this.storeChapters(documentId, response.data.chapters);
             }
-            if (uploadMode === 'chapter' && chapterMetadata) {
+            if (uploadMode === 'chapter' && metadata.chapterMetadata) {
                 await this.prisma.chapter.upsert({
                     where: {
                         documentId_chapterNumber: {
                             documentId,
-                            chapterNumber: chapterMetadata.chapterNumber,
+                            chapterNumber: metadata.chapterMetadata.chapterNumber,
                         },
                     },
                     create: {
                         documentId,
-                        chapterNumber: chapterMetadata.chapterNumber,
-                        chapterName: chapterMetadata.chapterName,
+                        chapterNumber: metadata.chapterMetadata.chapterNumber,
+                        chapterName: metadata.chapterMetadata.chapterName,
                         startPosition: 0,
                         endPosition: 0,
                     },
                     update: {
-                        chapterName: chapterMetadata.chapterName,
+                        chapterName: metadata.chapterMetadata.chapterName,
                     },
                 });
             }

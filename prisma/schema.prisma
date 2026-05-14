@@ -81,21 +81,44 @@ model RefreshToken {
 model Document {
   id            String   @id @default(uuid())
   userId        String
+  
+  // Universal metadata
+  documentType  String   @default("textbook") // textbook | past_paper | notes | reference | question_bank
+  
+  // Education system hierarchy
+  educationSystem String @default("punjab_board") // punjab_board, federal_board, css_exam, nust, etc.
+  level         String   @default("matric") // matric, fsc, bs, ms, phd, competitive
+  class         String?  // For matric: "9" or "10", For FSc: "11" or "12", For BS: "BS-CS-3", etc.
+  subject       String?  // mathematics, physics, urdu, etc.
+  year          Int?
+  board         String?  // punjab_board, fpsc, nust, etc.
+  examType      String?  // mid_term, final, annual, written, etc.
+  language      String   @default("english") // english, urdu, mixed
+  
+  // File info
   fileName      String
   fileType      String
   fileUrl       String
   fileSize      Int
-  subject       String?  // Subject classification (e.g., "Physics", "Mathematics")
-  uploadMode    String   @default("fullbook") // 'chapter' | 'fullbook'
-  chapterNumber Int?     // Chapter number (for chapter uploads)
-  chapterName   String?  // Chapter name (for chapter uploads)
-  uploadDate    DateTime @default(now())
+  
+  // Processing info
+  uploadMode    String   @default("auto") // auto, chapter, fullbook, manual
+  chapterNumber Int?     // For chapter uploads
+  chapterName   String?  // For chapter uploads
   processed     Boolean  @default(false)
+  extractionMethod String? // pymupdf, ocr, vision_model, manual
+  extractionQuality Float? // 0.0 - 1.0
+  verified      Boolean  @default(false)
+  
+  uploadDate    DateTime @default(now())
   
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   chunks        DocumentChunk[]
   chapters      Chapter[]
+  contentBlocks ContentBlock[]
 
+  @@index([userId, educationSystem, level, subject])
+  @@index([board, class, subject, year])
   @@index([userId, subject, chapterNumber])
   @@map("documents")
 }
@@ -113,6 +136,31 @@ model DocumentChunk {
   document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@map("document_chunks")
+}
+
+model ContentBlock {
+  id          String   @id @default(uuid())
+  documentId  String
+  
+  blockType   String   // introduction, explanation, definition, theorem, formula, solved_example, exercise_question, side_note, summary, diagram, table, section_header, chapter_header
+  chapterNumber Int?
+  pageNumber  Int
+  position    Json?    // {x, y, width, height}
+  
+  content     Json     // Flexible content structure: {text, equations, images, formatting}
+  
+  // For searchability
+  textContent String   @db.Text
+  equations   String[]
+  concepts    String[]
+  
+  createdAt   DateTime @default(now())
+  
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  @@index([documentId, blockType, chapterNumber])
+  @@index([documentId, pageNumber])
+  @@map("content_blocks")
 }
 
 model Exam {

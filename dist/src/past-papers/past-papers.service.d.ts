@@ -14,14 +14,14 @@ export declare class PastPapersService {
         createdAt: Date;
         userId: string;
         year: number;
+        class: string;
+        subject: string;
+        board: string;
+        examType: string;
         fileName: string;
         fileUrl: string;
         fileSize: number;
-        subject: string;
         processed: boolean;
-        examType: string;
-        class: string;
-        board: string;
     }[]>;
     getPatterns(userId: string, subject: string, chapters: number[], mode?: string): Promise<any>;
     deletePastPaper(pastPaperId: string, userId: string): Promise<{

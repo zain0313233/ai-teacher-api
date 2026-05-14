@@ -14,14 +14,14 @@ export declare class PastPapersController {
             createdAt: Date;
             userId: string;
             year: number;
+            class: string;
+            subject: string;
+            board: string;
+            examType: string;
             fileName: string;
             fileUrl: string;
             fileSize: number;
-            subject: string;
             processed: boolean;
-            examType: string;
-            class: string;
-            board: string;
         }[];
     }>;
     getPatterns(req: any, body: any): Promise<any>;
