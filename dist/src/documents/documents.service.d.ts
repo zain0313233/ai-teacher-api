@@ -36,6 +36,17 @@ export declare class DocumentsService {
         extractionMethod: string | null;
         extractionQuality: number | null;
         verified: boolean;
+        isOfficial: boolean;
+        contentTier: string;
+        topic: string | null;
+        concept: string | null;
+        difficulty: string | null;
+        sourceUrl: string | null;
+        sourceDomain: string | null;
+        trustScore: number;
+        examRelevance: string | null;
+        realWorldApp: boolean;
+        interactive: boolean;
         uploadDate: Date;
     }>;
     private processDocumentAsync;
@@ -62,6 +73,17 @@ export declare class DocumentsService {
         extractionMethod: string | null;
         extractionQuality: number | null;
         verified: boolean;
+        isOfficial: boolean;
+        contentTier: string;
+        topic: string | null;
+        concept: string | null;
+        difficulty: string | null;
+        sourceUrl: string | null;
+        sourceDomain: string | null;
+        trustScore: number;
+        examRelevance: string | null;
+        realWorldApp: boolean;
+        interactive: boolean;
         uploadDate: Date;
     }[]>;
     getDocumentById(documentId: string, userId: string): Promise<{
@@ -87,6 +109,17 @@ export declare class DocumentsService {
         extractionMethod: string | null;
         extractionQuality: number | null;
         verified: boolean;
+        isOfficial: boolean;
+        contentTier: string;
+        topic: string | null;
+        concept: string | null;
+        difficulty: string | null;
+        sourceUrl: string | null;
+        sourceDomain: string | null;
+        trustScore: number;
+        examRelevance: string | null;
+        realWorldApp: boolean;
+        interactive: boolean;
         uploadDate: Date;
     }>;
     deleteDocument(documentId: string, userId: string): Promise<{

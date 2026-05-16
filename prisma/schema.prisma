@@ -10,8 +10,9 @@ datasource db {
 }
 
 enum UserRole {
-  USER
-  ADMIN
+  USER      // Students - default role, current dashboard
+  TEACHER   // Teachers - new portal needed
+  ADMIN     // Admins - new portal needed
 }
 
 enum PlanType {
@@ -109,6 +110,19 @@ model Document {
   extractionMethod String? // pymupdf, ocr, vision_model, manual
   extractionQuality Float? // 0.0 - 1.0
   verified      Boolean  @default(false)
+  isOfficial    Boolean  @default(false) // Admin-uploaded official content
+  
+  // Multi-tier knowledge system fields
+  contentTier   String   @default("curriculum") // curriculum, conceptual, research, practical
+  topic         String?  // Main topic (e.g., "Gravity", "Newton's Laws")
+  concept       String?  // Specific concept (e.g., "First Law of Motion")
+  difficulty    String?  // beginner, intermediate, advanced
+  sourceUrl     String?  // Original source URL for scraped content
+  sourceDomain  String?  // e.g., "nasa.gov", "khanacademy.org", "wikipedia.org"
+  trustScore    Float    @default(0.8) // 0.0 to 1.0 - reliability score
+  examRelevance String?  // high, medium, low - relevance to exams
+  realWorldApp  Boolean  @default(false) // Has real-world applications
+  interactive   Boolean  @default(false) // Has interactive content (simulations, etc.)
   
   uploadDate    DateTime @default(now())
   

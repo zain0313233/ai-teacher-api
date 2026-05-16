@@ -3,9 +3,9 @@ export declare class UsersService {
     private prisma;
     constructor(prisma: PrismaService);
     getProfile(userId: string): Promise<{
-        name: string;
-        email: string;
         id: string;
+        email: string;
+        name: string;
         role: import("@prisma/client").$Enums.UserRole;
         plan: import("@prisma/client").$Enums.PlanType;
         createdAt: Date;
@@ -14,17 +14,17 @@ export declare class UsersService {
     updateProfile(userId: string, data: {
         name?: string;
     }): Promise<{
-        name: string;
-        email: string;
         id: string;
+        email: string;
+        name: string;
         role: import("@prisma/client").$Enums.UserRole;
         plan: import("@prisma/client").$Enums.PlanType;
         updatedAt: Date;
     }>;
     updatePlan(userId: string, plan: 'FREE' | 'BASIC' | 'PRO'): Promise<{
-        name: string;
-        email: string;
         id: string;
+        email: string;
+        name: string;
         plan: import("@prisma/client").$Enums.PlanType;
     }>;
 }

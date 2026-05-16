@@ -216,10 +216,15 @@ export class DocumentsService {
   }
 
   async getChaptersBySubject(userId: string, subject: string) {
-    // First try to get from database
+    // Get documents from:
+    // 1. User's own documents
+    // 2. Official documents (uploaded by admin with isOfficial: true)
     const documents = await this.prisma.document.findMany({
       where: {
-        userId,
+        OR: [
+          { userId }, // User's own documents
+          { isOfficial: true }, // Official documents (admin uploads)
+        ],
         subject,
         processed: true,
       },

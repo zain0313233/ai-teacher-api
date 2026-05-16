@@ -19,6 +19,7 @@ const exams_module_1 = require("./exams/exams.module");
 const patterns_module_1 = require("./patterns/patterns.module");
 const past_papers_module_1 = require("./past-papers/past-papers.module");
 const exam_assistant_module_1 = require("./exam-assistant/exam-assistant.module");
+const admin_module_1 = require("./admin/admin.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -36,6 +37,7 @@ exports.AppModule = AppModule = __decorate([
             patterns_module_1.PatternsModule,
             past_papers_module_1.PastPapersModule,
             exam_assistant_module_1.ExamAssistantModule,
+            admin_module_1.AdminModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

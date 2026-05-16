@@ -27,6 +27,17 @@ export declare class DocumentsController {
         extractionMethod: string | null;
         extractionQuality: number | null;
         verified: boolean;
+        isOfficial: boolean;
+        contentTier: string;
+        topic: string | null;
+        concept: string | null;
+        difficulty: string | null;
+        sourceUrl: string | null;
+        sourceDomain: string | null;
+        trustScore: number;
+        examRelevance: string | null;
+        realWorldApp: boolean;
+        interactive: boolean;
         uploadDate: Date;
     }>;
     getChapters(req: any, subject: string): Promise<any>;
@@ -53,6 +64,17 @@ export declare class DocumentsController {
         extractionMethod: string | null;
         extractionQuality: number | null;
         verified: boolean;
+        isOfficial: boolean;
+        contentTier: string;
+        topic: string | null;
+        concept: string | null;
+        difficulty: string | null;
+        sourceUrl: string | null;
+        sourceDomain: string | null;
+        trustScore: number;
+        examRelevance: string | null;
+        realWorldApp: boolean;
+        interactive: boolean;
         uploadDate: Date;
     }[]>;
     getDocument(req: any, id: string): Promise<{
@@ -78,6 +100,17 @@ export declare class DocumentsController {
         extractionMethod: string | null;
         extractionQuality: number | null;
         verified: boolean;
+        isOfficial: boolean;
+        contentTier: string;
+        topic: string | null;
+        concept: string | null;
+        difficulty: string | null;
+        sourceUrl: string | null;
+        sourceDomain: string | null;
+        trustScore: number;
+        examRelevance: string | null;
+        realWorldApp: boolean;
+        interactive: boolean;
         uploadDate: Date;
     }>;
     getDocumentStatus(req: any, id: string): Promise<{

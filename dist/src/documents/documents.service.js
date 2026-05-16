@@ -161,7 +161,10 @@ let DocumentsService = class DocumentsService {
     async getChaptersBySubject(userId, subject) {
         const documents = await this.prisma.document.findMany({
             where: {
-                userId,
+                OR: [
+                    { userId },
+                    { isOfficial: true },
+                ],
                 subject,
                 processed: true,
             },

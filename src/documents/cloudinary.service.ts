@@ -1,57 +1,78 @@
 import { Injectable } from '@nestjs/common';
-import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
-import { Readable } from 'stream';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 @Injectable()
 export class CloudinaryService {
+  private supabase: SupabaseClient;
+  private bucketName = 'documents';
+
   constructor() {
-    cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET,
-      timeout: 600000, // 10 minutes timeout
-    });
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Supabase credentials not found in environment variables');
+    }
+
+    this.supabase = createClient(supabaseUrl, supabaseKey);
   }
 
   async uploadFile(file: Express.Multer.File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: 'ai-teacher-documents',
-          resource_type: 'raw',
-          timeout: 600000,
-          chunk_size: 6000000, // 6MB chunks for large files (up to 100MB)
-        },
-        (error: any, result: UploadApiResponse | undefined) => {
-          if (error) {
-            console.error('Cloudinary upload error:', error);
-            return reject(error);
-          }
-          if (!result) return reject(new Error('Upload failed'));
-          resolve(result.secure_url);
-        },
-      );
+    try {
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(7);
+      const fileExtension = file.originalname.split('.').pop();
+      const fileName = `${timestamp}_${randomString}.${fileExtension}`;
+      const filePath = `ai-teacher-documents/${fileName}`;
 
-      // Stream the file
-      const bufferStream = new Readable();
-      bufferStream.push(file.buffer);
-      bufferStream.push(null);
-      bufferStream.pipe(uploadStream);
-    });
+      // Upload to Supabase Storage
+      const { data, error } = await this.supabase.storage
+        .from(this.bucketName)
+        .upload(filePath, file.buffer, {
+          contentType: file.mimetype,
+          upsert: false,
+        });
+
+      if (error) {
+        console.error('Supabase upload error:', error);
+        throw new Error(`Upload failed: ${error.message}`);
+      }
+
+      // Get public URL
+      const { data: urlData } = this.supabase.storage
+        .from(this.bucketName)
+        .getPublicUrl(filePath);
+
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error('File upload error:', error);
+      throw error;
+    }
   }
 
   async deleteFile(fileUrl: string): Promise<void> {
     try {
-      const publicId = this.extractPublicId(fileUrl);
-      await cloudinary.uploader.destroy(publicId, { resource_type: 'raw' });
+      // Extract file path from URL
+      const filePath = this.extractFilePath(fileUrl);
+      
+      const { error } = await this.supabase.storage
+        .from(this.bucketName)
+        .remove([filePath]);
+
+      if (error) {
+        console.error('Supabase deletion error:', error);
+        throw error;
+      }
     } catch (error) {
-      console.error('Cloudinary deletion error:', error);
+      console.error('File deletion error:', error);
     }
   }
 
-  private extractPublicId(url: string): string {
-    const parts = url.split('/');
-    const filename = parts[parts.length - 1];
-    return `ai-teacher-documents/${filename.split('.')[0]}`;
+  private extractFilePath(url: string): string {
+    // Extract path from Supabase URL
+    // Format: https://{project}.supabase.co/storage/v1/object/public/documents/{path}
+    const parts = url.split('/storage/v1/object/public/documents/');
+    return parts[1] || '';
   }
 }

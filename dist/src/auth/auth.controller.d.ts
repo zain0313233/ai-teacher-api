@@ -11,9 +11,9 @@ export declare class AuthController {
         success: boolean;
         message: string;
         user: {
-            name: string;
-            email: string;
             id: string;
+            email: string;
+            name: string;
             role: import("@prisma/client").$Enums.UserRole;
             plan: import("@prisma/client").$Enums.PlanType;
             isVerified: boolean;

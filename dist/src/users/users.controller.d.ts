@@ -7,9 +7,9 @@ export declare class UsersController {
     getProfile(req: any): Promise<{
         success: boolean;
         user: {
-            name: string;
-            email: string;
             id: string;
+            email: string;
+            name: string;
             role: import("@prisma/client").$Enums.UserRole;
             plan: import("@prisma/client").$Enums.PlanType;
             createdAt: Date;
@@ -19,9 +19,9 @@ export declare class UsersController {
     updateProfile(req: any, updateProfileDto: UpdateProfileDto): Promise<{
         success: boolean;
         user: {
-            name: string;
-            email: string;
             id: string;
+            email: string;
+            name: string;
             role: import("@prisma/client").$Enums.UserRole;
             plan: import("@prisma/client").$Enums.PlanType;
             updatedAt: Date;
@@ -30,9 +30,9 @@ export declare class UsersController {
     updatePlan(req: any, updatePlanDto: UpdatePlanDto): Promise<{
         success: boolean;
         user: {
-            name: string;
-            email: string;
             id: string;
+            email: string;
+            name: string;
             plan: import("@prisma/client").$Enums.PlanType;
         };
     }>;
