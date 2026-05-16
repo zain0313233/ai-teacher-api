@@ -94,6 +94,7 @@ let AdminService = class AdminService {
                 education_system: metadata.educationSystem,
                 document_type: metadata.documentType,
                 upload_mode: uploadMode,
+                is_official: true,
             };
             if (metadata.chapterMetadata) {
                 payload.chapter_number = metadata.chapterMetadata.chapterNumber;
