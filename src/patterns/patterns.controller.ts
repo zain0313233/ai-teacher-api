@@ -71,4 +71,13 @@ export class PatternsController {
     await this.patternsService.markAsUsed(id, req.user.id);
     return { message: 'Pattern marked as used' };
   }
+
+  @Post('create-with-ai')
+  async createPatternWithAI(@Request() req, @Body() body: { prompt: string }) {
+    const result = await this.patternsService.createPatternWithAI(
+      req.user.id,
+      body.prompt,
+    );
+    return result;
+  }
 }

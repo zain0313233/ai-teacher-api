@@ -10,8 +10,9 @@ datasource db {
 }
 
 enum UserRole {
-  USER
-  ADMIN
+  USER      // Students - default role, current dashboard
+  TEACHER   // Teachers - new portal needed
+  ADMIN     // Admins - new portal needed
 }
 
 enum PlanType {
@@ -35,6 +36,7 @@ model User {
   documents     Document[]
   exams         Exam[]
   patterns      Pattern[]
+  pastPapers    PastPaper[]
   otpCodes      OtpCode[]
   passwordResets PasswordReset[]
 
@@ -80,21 +82,57 @@ model RefreshToken {
 model Document {
   id            String   @id @default(uuid())
   userId        String
+  
+  // Universal metadata
+  documentType  String   @default("textbook") // textbook | past_paper | notes | reference | question_bank
+  
+  // Education system hierarchy
+  educationSystem String @default("punjab_board") // punjab_board, federal_board, css_exam, nust, etc.
+  level         String   @default("matric") // matric, fsc, bs, ms, phd, competitive
+  class         String?  // For matric: "9" or "10", For FSc: "11" or "12", For BS: "BS-CS-3", etc.
+  subject       String?  // mathematics, physics, urdu, etc.
+  year          Int?
+  board         String?  // punjab_board, fpsc, nust, etc.
+  examType      String?  // mid_term, final, annual, written, etc.
+  language      String   @default("english") // english, urdu, mixed
+  
+  // File info
   fileName      String
   fileType      String
   fileUrl       String
   fileSize      Int
-  subject       String?  // Subject classification (e.g., "Physics", "Mathematics")
-  uploadMode    String   @default("fullbook") // 'chapter' | 'fullbook'
-  chapterNumber Int?     // Chapter number (for chapter uploads)
-  chapterName   String?  // Chapter name (for chapter uploads)
-  uploadDate    DateTime @default(now())
+  
+  // Processing info
+  uploadMode    String   @default("auto") // auto, chapter, fullbook, manual
+  chapterNumber Int?     // For chapter uploads
+  chapterName   String?  // For chapter uploads
   processed     Boolean  @default(false)
+  extractionMethod String? // pymupdf, ocr, vision_model, manual
+  extractionQuality Float? // 0.0 - 1.0
+  verified      Boolean  @default(false)
+  isOfficial    Boolean  @default(false) // Admin-uploaded official content
+  
+  // Multi-tier knowledge system fields
+  contentTier   String   @default("curriculum") // curriculum, conceptual, research, practical
+  topic         String?  // Main topic (e.g., "Gravity", "Newton's Laws")
+  concept       String?  // Specific concept (e.g., "First Law of Motion")
+  difficulty    String?  // beginner, intermediate, advanced
+  sourceUrl     String?  // Original source URL for scraped content
+  sourceDomain  String?  // e.g., "nasa.gov", "khanacademy.org", "wikipedia.org"
+  trustScore    Float    @default(0.8) // 0.0 to 1.0 - reliability score
+  examRelevance String?  // high, medium, low - relevance to exams
+  realWorldApp  Boolean  @default(false) // Has real-world applications
+  interactive   Boolean  @default(false) // Has interactive content (simulations, etc.)
+  
+  uploadDate    DateTime @default(now())
   
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   chunks        DocumentChunk[]
   chapters      Chapter[]
+  contentBlocks ContentBlock[]
 
+  @@index([userId, educationSystem, level, subject])
+  @@index([board, class, subject, year])
   @@index([userId, subject, chapterNumber])
   @@map("documents")
 }
@@ -112,6 +150,31 @@ model DocumentChunk {
   document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@map("document_chunks")
+}
+
+model ContentBlock {
+  id          String   @id @default(uuid())
+  documentId  String
+  
+  blockType   String   // introduction, explanation, definition, theorem, formula, solved_example, exercise_question, side_note, summary, diagram, table, section_header, chapter_header
+  chapterNumber Int?
+  pageNumber  Int
+  position    Json?    // {x, y, width, height}
+  
+  content     Json     // Flexible content structure: {text, equations, images, formatting}
+  
+  // For searchability
+  textContent String   @db.Text
+  equations   String[]
+  concepts    String[]
+  
+  createdAt   DateTime @default(now())
+  
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  @@index([documentId, blockType, chapterNumber])
+  @@index([documentId, pageNumber])
+  @@map("content_blocks")
 }
 
 model Exam {
@@ -166,4 +229,112 @@ model Chapter {
 
   @@unique([documentId, chapterNumber])
   @@map("chapters")
+}
+
+model PastPaper {
+  id          String   @id @default(uuid())
+  userId      String
+  subject     String
+  examType    String   // 'quiz', 'mid-term', 'final'
+  year        Int
+  board       String   // "Punjab Board"
+  class       String
+  fileName    String
+  fileUrl     String
+  fileSize    Int
+  processed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions   PastPaperQuestion[]
+
+  @@index([userId, subject, year])
+  @@index([board, class, subject])
+  @@map("past_papers")
+}
+
+model PastPaperQuestion {
+  id              String   @id @default(uuid())
+  pastPaperId     String
+  questionText    String   @db.Text
+  
+  // Pattern Signature Fields 🔥
+  concept         String   // "Quadratic Equations", "Trigonometry"
+  method          String   // "Factorization", "Formula", "Substitution"
+  structure       String   // "Standard Form", "Word Problem", "MCQ Concept"
+  
+  // Classification
+  questionType    String   // "MCQ", "Short", "Long"
+  chapter         Int?
+  marks           Int
+  difficulty      String   // "Easy", "Medium", "Hard"
+  
+  // Intelligence Fields
+  frequency       Int      @default(1)
+  lastAppeared    Int      // Year
+  consistencyScore Float   @default(0)
+  
+  createdAt       DateTime @default(now())
+  
+  pastPaper       PastPaper @relation(fields: [pastPaperId], references: [id], onDelete: Cascade)
+  cluster         PatternCluster? @relation(fields: [clusterId], references: [id])
+  clusterId       String?
+
+  @@index([chapter])
+  @@index([concept, method, structure])
+  @@map("past_paper_questions")
+}
+
+model PatternCluster {
+  id                String   @id @default(uuid())
+  
+  // Pattern Signature
+  concept           String
+  method            String
+  structure         String
+  difficulty        String
+  
+  // Context
+  subject           String
+  board             String
+  class             String
+  chapter           Int?
+  
+  // Aggregated Intelligence
+  totalFrequency    Int      @default(0)
+  priorityScore     Float    @default(0)
+  consistencyBonus  Float    @default(0)
+  trend             String   @default("STABLE") // "RISING", "STABLE", "DECLINING"
+  
+  // Years appeared
+  yearsAppeared     Int[]
+  
+  // Sample questions for reference
+  sampleQuestions   String[] @db.Text
+  
+  questions         PastPaperQuestion[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@unique([concept, method, structure, difficulty, subject, class])
+  @@index([concept, method, structure, difficulty])
+  @@index([priorityScore])
+  @@index([subject, class, chapter])
+  @@map("pattern_clusters")
+}
+
+model PatternCache {
+  id          String   @id @default(uuid())
+  board       String
+  country     String?
+  subject     String
+  class       String
+  year        String
+  pattern     Json     // Cached pattern data
+  cachedAt    DateTime @default(now())
+  expiresAt   DateTime // Cache expiry (e.g., 30 days)
+  
+  @@unique([board, subject, class, year])
+  @@index([board, subject, class])
+  @@map("pattern_cache")
 }

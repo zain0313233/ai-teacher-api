@@ -11,9 +11,9 @@ export declare class AuthService {
     private emailService;
     constructor(prisma: PrismaService, jwtService: JwtService, configService: ConfigService, emailService: EmailService);
     register(registerDto: RegisterDto): Promise<{
-        name: string;
-        email: string;
         id: string;
+        email: string;
+        name: string;
         role: import("@prisma/client").$Enums.UserRole;
         plan: import("@prisma/client").$Enums.PlanType;
         isVerified: boolean;

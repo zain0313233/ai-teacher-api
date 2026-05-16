@@ -5,8 +5,8 @@ export declare class PatternsController {
     private readonly patternsService;
     constructor(patternsService: PatternsService);
     createPattern(req: any, createPatternDto: CreatePatternDto): Promise<{
-        name: string;
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         userId: string;
@@ -17,8 +17,8 @@ export declare class PatternsController {
         lastUsed: Date | null;
     }>;
     getUserPatterns(req: any): Promise<{
-        name: string;
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         userId: string;
@@ -35,8 +35,8 @@ export declare class PatternsController {
         avgDuration: string;
     }>;
     getPattern(req: any, id: string): Promise<{
-        name: string;
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         userId: string;
@@ -47,8 +47,8 @@ export declare class PatternsController {
         lastUsed: Date | null;
     }>;
     updatePattern(req: any, id: string, updatePatternDto: UpdatePatternDto): Promise<{
-        name: string;
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         userId: string;
@@ -64,4 +64,7 @@ export declare class PatternsController {
     markPatternAsUsed(req: any, id: string): Promise<{
         message: string;
     }>;
+    createPatternWithAI(req: any, body: {
+        prompt: string;
+    }): Promise<any>;
 }

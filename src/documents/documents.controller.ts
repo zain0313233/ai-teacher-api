@@ -40,7 +40,16 @@ export class DocumentsController {
       throw new BadRequestException('No file uploaded');
     }
 
-    const { uploadMode, subject, chapterNumber, chapterName } = body;
+    const { 
+      uploadMode, 
+      subject, 
+      level, 
+      class: classValue,
+      educationSystem,
+      documentType,
+      chapterNumber, 
+      chapterName 
+    } = body;
 
     // Validate file type
     const allowedTypes = [
@@ -70,6 +79,11 @@ export class DocumentsController {
       }
     }
 
+    // Validate level and class combination
+    if (level && ['matric', 'fsc'].includes(level) && !classValue) {
+      throw new BadRequestException(`Class is required for ${level} level`);
+    }
+
     // Upload to Supabase Storage
     const fileUrl = await this.supabaseService.uploadFile(file);
 
@@ -80,11 +94,17 @@ export class DocumentsController {
       file.mimetype,
       fileUrl,
       file.size,
-      subject,
-      uploadMode === 'chapter' && chapterNumber && chapterName ? {
-        chapterNumber: parseInt(chapterNumber, 10),
-        chapterName: chapterName,
-      } : undefined,
+      {
+        subject,
+        level,
+        class: classValue,
+        educationSystem,
+        documentType,
+        chapterMetadata: uploadMode === 'chapter' && chapterNumber && chapterName ? {
+          chapterNumber: parseInt(chapterNumber, 10),
+          chapterName: chapterName,
+        } : undefined,
+      },
     );
 
     return document;

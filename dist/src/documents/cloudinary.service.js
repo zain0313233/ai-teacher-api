@@ -11,52 +11,63 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CloudinaryService = void 0;
 const common_1 = require("@nestjs/common");
-const cloudinary_1 = require("cloudinary");
-const stream_1 = require("stream");
+const supabase_js_1 = require("@supabase/supabase-js");
 let CloudinaryService = class CloudinaryService {
+    supabase;
+    bucketName = 'documents';
     constructor() {
-        cloudinary_1.v2.config({
-            cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-            api_key: process.env.CLOUDINARY_API_KEY,
-            api_secret: process.env.CLOUDINARY_API_SECRET,
-            timeout: 600000,
-        });
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+        if (!supabaseUrl || !supabaseKey) {
+            throw new Error('Supabase credentials not found in environment variables');
+        }
+        this.supabase = (0, supabase_js_1.createClient)(supabaseUrl, supabaseKey);
     }
     async uploadFile(file) {
-        return new Promise((resolve, reject) => {
-            const uploadStream = cloudinary_1.v2.uploader.upload_stream({
-                folder: 'ai-teacher-documents',
-                resource_type: 'raw',
-                timeout: 600000,
-                chunk_size: 6000000,
-            }, (error, result) => {
-                if (error) {
-                    console.error('Cloudinary upload error:', error);
-                    return reject(error);
-                }
-                if (!result)
-                    return reject(new Error('Upload failed'));
-                resolve(result.secure_url);
+        try {
+            const timestamp = Date.now();
+            const randomString = Math.random().toString(36).substring(7);
+            const fileExtension = file.originalname.split('.').pop();
+            const fileName = `${timestamp}_${randomString}.${fileExtension}`;
+            const filePath = `ai-teacher-documents/${fileName}`;
+            const { data, error } = await this.supabase.storage
+                .from(this.bucketName)
+                .upload(filePath, file.buffer, {
+                contentType: file.mimetype,
+                upsert: false,
             });
-            const bufferStream = new stream_1.Readable();
-            bufferStream.push(file.buffer);
-            bufferStream.push(null);
-            bufferStream.pipe(uploadStream);
-        });
+            if (error) {
+                console.error('Supabase upload error:', error);
+                throw new Error(`Upload failed: ${error.message}`);
+            }
+            const { data: urlData } = this.supabase.storage
+                .from(this.bucketName)
+                .getPublicUrl(filePath);
+            return urlData.publicUrl;
+        }
+        catch (error) {
+            console.error('File upload error:', error);
+            throw error;
+        }
     }
     async deleteFile(fileUrl) {
         try {
-            const publicId = this.extractPublicId(fileUrl);
-            await cloudinary_1.v2.uploader.destroy(publicId, { resource_type: 'raw' });
+            const filePath = this.extractFilePath(fileUrl);
+            const { error } = await this.supabase.storage
+                .from(this.bucketName)
+                .remove([filePath]);
+            if (error) {
+                console.error('Supabase deletion error:', error);
+                throw error;
+            }
         }
         catch (error) {
-            console.error('Cloudinary deletion error:', error);
+            console.error('File deletion error:', error);
         }
     }
-    extractPublicId(url) {
-        const parts = url.split('/');
-        const filename = parts[parts.length - 1];
-        return `ai-teacher-documents/${filename.split('.')[0]}`;
+    extractFilePath(url) {
+        const parts = url.split('/storage/v1/object/public/documents/');
+        return parts[1] || '';
     }
 };
 exports.CloudinaryService = CloudinaryService;

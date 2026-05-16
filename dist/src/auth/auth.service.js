@@ -62,7 +62,7 @@ let AuthService = class AuthService {
         this.emailService = emailService;
     }
     async register(registerDto) {
-        const { name, email, password } = registerDto;
+        const { name, email, password, role } = registerDto;
         const existingUser = await this.prisma.user.findUnique({
             where: { email },
         });
@@ -75,6 +75,7 @@ let AuthService = class AuthService {
                 name,
                 email,
                 password: hashedPassword,
+                role: role || 'USER',
             },
             select: {
                 id: true,

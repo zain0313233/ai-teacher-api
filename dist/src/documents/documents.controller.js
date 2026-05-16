@@ -29,7 +29,7 @@ let DocumentsController = class DocumentsController {
         if (!file) {
             throw new common_1.BadRequestException('No file uploaded');
         }
-        const { uploadMode, subject, chapterNumber, chapterName } = body;
+        const { uploadMode, subject, level, class: classValue, educationSystem, documentType, chapterNumber, chapterName } = body;
         const allowedTypes = [
             'application/pdf',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -52,11 +52,21 @@ let DocumentsController = class DocumentsController {
                 throw new common_1.BadRequestException('Chapter name is required for chapter upload');
             }
         }
+        if (level && ['matric', 'fsc'].includes(level) && !classValue) {
+            throw new common_1.BadRequestException(`Class is required for ${level} level`);
+        }
         const fileUrl = await this.supabaseService.uploadFile(file);
-        const document = await this.documentsService.uploadDocument(req.user.id, file.originalname, file.mimetype, fileUrl, file.size, subject, uploadMode === 'chapter' && chapterNumber && chapterName ? {
-            chapterNumber: parseInt(chapterNumber, 10),
-            chapterName: chapterName,
-        } : undefined);
+        const document = await this.documentsService.uploadDocument(req.user.id, file.originalname, file.mimetype, fileUrl, file.size, {
+            subject,
+            level,
+            class: classValue,
+            educationSystem,
+            documentType,
+            chapterMetadata: uploadMode === 'chapter' && chapterNumber && chapterName ? {
+                chapterNumber: parseInt(chapterNumber, 10),
+                chapterName: chapterName,
+            } : undefined,
+        });
         return document;
     }
     async getChapters(req, subject) {

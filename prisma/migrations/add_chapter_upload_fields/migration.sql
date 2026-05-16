@@ -1,5 +1,6 @@
 -- Add chapter upload fields to documents table
 ALTER TABLE "documents" 
+ADD COLUMN "subject" TEXT,
 ADD COLUMN "uploadMode" TEXT NOT NULL DEFAULT 'fullbook',
 ADD COLUMN "chapterNumber" INTEGER,
 ADD COLUMN "chapterName" TEXT;

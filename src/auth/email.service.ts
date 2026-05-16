@@ -39,7 +39,14 @@ export class EmailService {
       `,
     };
 
-    await this.transporter.sendMail(mailOptions);
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log('✅ Verification email sent successfully:', info.messageId);
+      console.log('📧 Email sent to:', email);
+    } catch (error) {
+      console.error('❌ Failed to send verification email:', error);
+      throw error;
+    }
   }
 
   async sendPasswordResetEmail(email: string, name: string, resetToken: string) {
@@ -69,6 +76,13 @@ export class EmailService {
       `,
     };
 
-    await this.transporter.sendMail(mailOptions);
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log('✅ Password reset email sent successfully:', info.messageId);
+      console.log('📧 Email sent to:', email);
+    } catch (error) {
+      console.error('❌ Failed to send password reset email:', error);
+      throw error;
+    }
   }
 }
