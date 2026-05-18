@@ -21,7 +21,7 @@ let ExamAssistantService = class ExamAssistantService {
                 message: chatRequest.message,
                 context: chatRequest.context,
             }, {
-                timeout: 30000,
+                timeout: 120000,
             });
             return response.data;
         }

@@ -14,10 +14,19 @@ export interface ChatResponse {
         results?: any[];
         total_results?: number;
         query?: string;
+        exam_preview?: any;
+        files?: Array<{
+            filename: string;
+            data: string;
+            size: number;
+        }>;
+        download_ready?: boolean;
     };
     message: string;
+    response?: string;
     tool_used: string;
     next_suggestions: string[];
+    suggestions?: string[];
 }
 export declare class ExamAssistantService {
     private readonly fastApiUrl;

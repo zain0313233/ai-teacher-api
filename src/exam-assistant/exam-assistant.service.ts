@@ -18,10 +18,15 @@ export interface ChatResponse {
     results?: any[];
     total_results?: number;
     query?: string;
+    exam_preview?: any;
+    files?: Array<{ filename: string; data: string; size: number }>;
+    download_ready?: boolean;
   };
   message: string;
+  response?: string;
   tool_used: string;
   next_suggestions: string[];
+  suggestions?: string[];
 }
 
 @Injectable()
@@ -38,7 +43,7 @@ export class ExamAssistantService {
           context: chatRequest.context,
         },
         {
-          timeout: 30000, // 30 seconds
+          timeout: 120000, // 120 seconds - exam generation can take a while
         }
       );
 

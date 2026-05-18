@@ -3,9 +3,11 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   Request,
 } from '@nestjs/common';
@@ -79,5 +81,43 @@ export class PatternsController {
       body.prompt,
     );
     return result;
+  }
+
+  // ===== Template Management Endpoints =====
+
+  @Get('templates/list')
+  async listTemplates(
+    @Query('board') board?: string,
+    @Query('subject') subject?: string,
+    @Query('verified') verified?: string,
+  ) {
+    const isVerified = verified === 'true' ? true : verified === 'false' ? false : undefined;
+    return this.patternsService.listTemplates({ board, subject, isVerified });
+  }
+
+  @Get('templates/:id')
+  async getTemplate(@Param('id') id: string) {
+    return this.patternsService.getTemplate(id);
+  }
+
+  @Patch('templates/:id/correct')
+  async correctTemplate(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() body: {
+      name: string;
+      subject: string;
+      totalMarks: number;
+      duration: number;
+      sections: any[];
+      reason?: string;
+    },
+  ) {
+    return this.patternsService.correctPattern(
+      id,
+      { name: body.name, subject: body.subject, totalMarks: body.totalMarks, duration: body.duration, sections: body.sections },
+      req.user.id,
+      body.reason,
+    );
   }
 }

@@ -1,6 +1,21 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePatternDto } from './dto/create-pattern.dto';
 import { UpdatePatternDto } from './dto/update-pattern.dto';
+interface PatternSection {
+    name: string;
+    questionType: 'MCQ' | 'Short Answer' | 'Long Answer' | 'Case Study' | 'Practical' | 'Essay' | 'Numerical';
+    numberOfQuestions: number;
+    questionsToAttempt: number;
+    marksPerQuestion: number;
+    notes?: string;
+}
+interface PatternData {
+    name: string;
+    subject: string;
+    totalMarks: number;
+    duration: number;
+    sections: PatternSection[];
+}
 export declare class PatternsService {
     private prisma;
     private groqClient;
@@ -65,9 +80,62 @@ export declare class PatternsService {
         avgDuration: string;
     }>;
     createPatternWithAI(userId: string, userPrompt: string): Promise<any>;
+    private lookupVerifiedTemplate;
+    private hardValidatePattern;
+    private saveDraftTemplate;
+    correctPattern(templateId: string, correctedData: PatternData, correctedBy: string, reason?: string): Promise<any>;
+    listTemplates(filters?: {
+        board?: string;
+        subject?: string;
+        isVerified?: boolean;
+    }): Promise<{
+        id: string;
+        name: string;
+        isVerified: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        subject: string;
+        board: string;
+        totalMarks: number;
+        duration: number;
+        sections: import("@prisma/client/runtime/client").JsonValue;
+        lastUsed: Date | null;
+        country: string;
+        classLevel: string;
+        educationLevel: string;
+        source: string;
+        confidence: number;
+        usageCount: number;
+        notes: string | null;
+        createdBy: string | null;
+        verifiedBy: string | null;
+    }[]>;
+    getTemplate(id: string): Promise<{
+        id: string;
+        name: string;
+        isVerified: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        subject: string;
+        board: string;
+        totalMarks: number;
+        duration: number;
+        sections: import("@prisma/client/runtime/client").JsonValue;
+        lastUsed: Date | null;
+        country: string;
+        classLevel: string;
+        educationLevel: string;
+        source: string;
+        confidence: number;
+        usageCount: number;
+        notes: string | null;
+        createdBy: string | null;
+        verifiedBy: string | null;
+    }>;
     private detectContext;
     private searchWebForPattern;
     private parseSearchResults;
-    private validateAndCorrectPattern;
+    private recalculateMarks;
     private generateCustomPattern;
 }
+export {};

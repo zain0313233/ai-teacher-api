@@ -144,12 +144,15 @@ export class ExamsService {
         },
       });
 
+      // Build a descriptive fallback filename from exam data
+      const fallbackName = this.buildExamFileName(examData.subject, examData.class, examData.examType);
+
       // Return the file buffer and exam ID
       return {
         examId: exam.id,
         fileBuffer: response.data,
         contentType: response.headers['content-type'],
-        fileName: this.extractFileName(response.headers['content-disposition']),
+        fileName: this.extractFileName(response.headers['content-disposition'], fallbackName),
       };
     } catch (error) {
       console.error('FastAPI exam generation error:', error.message);
@@ -157,9 +160,22 @@ export class ExamsService {
     }
   }
 
-  private extractFileName(contentDisposition: string): string {
-    if (!contentDisposition) return 'exam.docx';
-    const match = contentDisposition.match(/filename="?(.+?)"?$/);
-    return match ? match[1] : 'exam.docx';
+  private extractFileName(contentDisposition: string, fallback: string = 'exam.docx'): string {
+    if (!contentDisposition) return fallback;
+    const match = contentDisposition.match(/filename="?([^"]+)"?/);
+    return match ? match[1] : fallback;
+  }
+
+  private buildExamFileName(subject: string, className: string, examType: string): string {
+    const safeSubject = (subject || 'Exam').replace(/\s+/g, '_');
+    const safeClass = className ? `_Class${className}` : '';
+    const typeMap: Record<string, string> = {
+      'quiz': 'Quiz',
+      'mid-term': 'Mid_Term',
+      'final': 'Final_Exam',
+      'practical': 'Practical',
+    };
+    const safeType = typeMap[examType?.toLowerCase()] || (examType || 'Exam').replace(/[\s-]+/g, '_');
+    return `${safeSubject}${safeClass}_${safeType}.docx`;
   }
 }

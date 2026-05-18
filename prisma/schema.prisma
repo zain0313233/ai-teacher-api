@@ -338,3 +338,85 @@ model PatternCache {
   @@index([board, subject, class])
   @@map("pattern_cache")
 }
+
+// ===== Pattern Template System =====
+// Stores verified exam pattern templates that the AI learns from.
+// When a pattern is corrected by admin/teacher, it becomes ground truth.
+// Next time the same board+subject+class is requested, the verified template is used directly.
+
+model PatternTemplate {
+  id              String   @id @default(uuid())
+  
+  // Identification
+  board           String   // "BISE Punjab", "Federal Board", "Cambridge O Level", etc.
+  country         String   @default("Pakistan")
+  subject         String   // "Mathematics", "English", "Islamiat", etc.
+  classLevel      String   // "9", "10", "11", "12", "O1", "O2", "AS", "A2", "BS", "MS"
+  educationLevel  String   @default("secondary") // primary, secondary, higher_secondary, undergraduate, graduate, phd, competitive
+  
+  // Pattern Data
+  name            String   // "BISE Punjab Islamiat Class 11 2026"
+  totalMarks      Int
+  duration        Int      // Minutes
+  sections        Json     // Array of PatternSection objects
+  
+  // Verification & Learning
+  isVerified      Boolean  @default(false) // true = admin/teacher approved ground truth
+  source          String   @default("ai") // "ai", "web_search", "manual", "admin_corrected"
+  confidence      Float    @default(0.5) // 0.0-1.0, increases with verification
+  usageCount      Int      @default(0) // How many times this template was used
+  lastUsed        DateTime?
+  
+  // Metadata
+  notes           String?  @db.Text // Admin notes about this template
+  createdBy       String?  // userId of creator
+  verifiedBy      String?  // userId of verifier
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([board, subject, classLevel, country])
+  @@index([board, subject, classLevel])
+  @@index([educationLevel])
+  @@index([isVerified])
+  @@map("pattern_templates")
+}
+
+// Audit trail for pattern corrections — permanent learning
+model CorrectionLog {
+  id              String   @id @default(uuid())
+  templateId      String   // References PatternTemplate.id
+  oldData         Json     // Previous pattern data before correction
+  newData         Json     // New corrected pattern data
+  correctedBy     String   // userId or 'admin'
+  reason          String?  @db.Text // Why was it corrected
+  sourceUrl       String?  // Link to official board notification if available
+  createdAt       DateTime @default(now())
+  
+  @@index([templateId])
+  @@map("correction_logs")
+}
+
+// Expected marks ranges per board+level — used for sanity checking AI output
+model BoardConfig {
+  id              String   @id @default(uuid())
+  
+  board           String   // "BISE Punjab", "Federal Board", etc.
+  country         String   @default("Pakistan")
+  educationLevel  String   // "secondary", "higher_secondary", etc.
+  
+  // Expected ranges
+  minMarks        Int      // Minimum total marks for this board+level
+  maxMarks        Int      // Maximum total marks
+  defaultMarks    Int      // Most common total marks
+  defaultDuration Int      // Minutes
+  
+  // Subject-specific overrides (JSON map: { "English": 100, "Physics": 85 })
+  subjectMarks    Json?    // Override marks per subject
+  
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([board, country, educationLevel])
+  @@map("board_configs")
+}
