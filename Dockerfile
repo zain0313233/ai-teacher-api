@@ -4,21 +4,26 @@ FROM node:20-alpine AS builder
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files and config files first
 COPY package*.json ./
+COPY tsconfig*.json ./
+COPY nest-cli.json ./
 COPY prisma ./prisma/
 
 # Install dependencies
 RUN npm ci
 
 # Copy source code
-COPY . .
+COPY src ./src
 
 # Generate Prisma Client
 RUN npx prisma generate
 
 # Build the application
 RUN npm run build
+
+# Verify build output exists
+RUN ls -la dist/ || (echo "Build failed - dist directory not created" && exit 1)
 
 # Production stage
 FROM node:20-alpine
