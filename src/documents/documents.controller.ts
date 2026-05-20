@@ -28,7 +28,7 @@ export class DocumentsController {
   @Post('upload')
   @UseInterceptors(FileInterceptor('file', {
     limits: {
-      fileSize: 100 * 1024 * 1024, // 100MB
+      fileSize: 50 * 1024 * 1024, // 50MB - matches validation below
     },
   }))
   async uploadDocument(
@@ -100,6 +100,7 @@ export class DocumentsController {
         class: classValue,
         educationSystem,
         documentType,
+        isOfficial: req.user.role === 'ADMIN',
         chapterMetadata: uploadMode === 'chapter' && chapterNumber && chapterName ? {
           chapterNumber: parseInt(chapterNumber, 10),
           chapterName: chapterName,

@@ -9,6 +9,7 @@ export declare class DocumentsService {
         class?: string;
         educationSystem?: string;
         documentType?: string;
+        isOfficial?: boolean;
         chapterMetadata?: {
             chapterNumber: number;
             chapterName: string;
