@@ -10,6 +10,7 @@ export declare class AdminService {
         message: string;
         document: {
             id: string;
+            board: string | null;
             userId: string;
             year: number | null;
             documentType: string;
@@ -17,7 +18,6 @@ export declare class AdminService {
             level: string;
             class: string | null;
             subject: string | null;
-            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;
@@ -79,6 +79,10 @@ export declare class AdminService {
             role: import("@prisma/client").$Enums.UserRole;
         };
     }>;
+    deleteUser(userId: string): Promise<{
+        success: boolean;
+        message: string;
+    }>;
     getPendingContent(): Promise<{
         success: boolean;
         documents: ({
@@ -90,6 +94,7 @@ export declare class AdminService {
             };
         } & {
             id: string;
+            board: string | null;
             userId: string;
             year: number | null;
             documentType: string;
@@ -97,7 +102,6 @@ export declare class AdminService {
             level: string;
             class: string | null;
             subject: string | null;
-            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;
@@ -131,6 +135,7 @@ export declare class AdminService {
         message: string;
         document: {
             id: string;
+            board: string | null;
             userId: string;
             year: number | null;
             documentType: string;
@@ -138,7 +143,6 @@ export declare class AdminService {
             level: string;
             class: string | null;
             subject: string | null;
-            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;
@@ -171,6 +175,7 @@ export declare class AdminService {
         message: string;
         document: {
             id: string;
+            board: string | null;
             userId: string;
             year: number | null;
             documentType: string;
@@ -178,7 +183,6 @@ export declare class AdminService {
             level: string;
             class: string | null;
             subject: string | null;
-            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;
@@ -279,6 +283,7 @@ export declare class AdminService {
             }[];
         } & {
             id: string;
+            board: string | null;
             userId: string;
             year: number | null;
             documentType: string;
@@ -286,7 +291,6 @@ export declare class AdminService {
             level: string;
             class: string | null;
             subject: string | null;
-            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;

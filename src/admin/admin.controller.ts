@@ -65,6 +65,15 @@ export class AdminController {
     return this.adminService.updateUserRole(userId, role);
   }
 
+  // Delete user (non-admin only)
+  @Delete('users/:id')
+  async deleteUser(@Param('id') userId: string, @Request() req) {
+    if (req.user.role !== 'ADMIN') {
+      throw new Error('Unauthorized: Admin access required');
+    }
+    return this.adminService.deleteUser(userId);
+  }
+
   // Get pending content for verification
   @Get('verification/pending')
   async getPendingContent(@Request() req) {

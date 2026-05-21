@@ -32,13 +32,15 @@ model User {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   
-  refreshTokens RefreshToken[]
-  documents     Document[]
-  exams         Exam[]
-  patterns      Pattern[]
-  pastPapers    PastPaper[]
-  otpCodes      OtpCode[]
+  refreshTokens  RefreshToken[]
+  documents      Document[]
+  exams          Exam[]
+  patterns       Pattern[]
+  pastPapers     PastPaper[]
+  otpCodes       OtpCode[]
   passwordResets PasswordReset[]
+  studentProfile StudentProfile?
+  teacherProfile TeacherProfile?
 
   @@map("users")
 }
@@ -394,6 +396,47 @@ model CorrectionLog {
   
   @@index([templateId])
   @@map("correction_logs")
+}
+
+model StudentProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  educationLevel  String              // matric | fsc | o_level | graduation | self_learner
+  classGrade      String?             // 9 | 10 | 11 | 12
+  group           String?             // pre_medical | pre_engineering | ics | icom | science | arts
+  board           String?             // punjab | federal | sindh | kpk | cambridge
+  degree          String?             // bs | bba | mbbs | be | other
+  semester        String?             // 1–8
+  subjects        String[]
+  targetExam      String?             // mdcat | ecat | css | nts | none
+  schoolName      String?
+  city            String?
+  onboardingDone  Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("student_profiles")
+}
+
+model TeacherProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subjectsTaught  String[]
+  classesTaught   String[]
+  board           String?
+  institutionType String?             // school | college | academy | tutor
+  schoolName      String?
+  city            String?
+  experienceYears Int?
+  onboardingDone  Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("teacher_profiles")
 }
 
 // Expected marks ranges per board+level — used for sanity checking AI output
