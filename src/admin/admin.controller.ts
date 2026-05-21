@@ -125,6 +125,29 @@ export class AdminController {
     return this.adminService.updateSettings(settings);
   }
 
+  // List all official uploaded content
+  @Get('content')
+  async getOfficialContent(
+    @Query('subject') subject: string,
+    @Query('documentType') documentType: string,
+    @Query('search') search: string,
+    @Request() req,
+  ) {
+    if (req.user.role !== 'ADMIN') {
+      throw new Error('Unauthorized: Admin access required');
+    }
+    return this.adminService.getOfficialContent({ subject, documentType, search });
+  }
+
+  // Delete official content
+  @Delete('content/:id')
+  async deleteOfficialContent(@Param('id') documentId: string, @Request() req) {
+    if (req.user.role !== 'ADMIN') {
+      throw new Error('Unauthorized: Admin access required');
+    }
+    return this.adminService.deleteOfficialContent(documentId);
+  }
+
   // Start content scraping
   @Post('scraping/start')
   async startScraping(

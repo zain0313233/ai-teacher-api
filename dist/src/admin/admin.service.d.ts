@@ -256,6 +256,69 @@ export declare class AdminService {
         message: string;
         settings: any;
     }>;
+    getOfficialContent(filters: {
+        subject?: string;
+        documentType?: string;
+        search?: string;
+    }): Promise<{
+        success: boolean;
+        documents: ({
+            user: {
+                id: string;
+                email: string;
+                name: string;
+            };
+            chapters: {
+                id: string;
+                createdAt: Date;
+                chapterNumber: number;
+                chapterName: string;
+                documentId: string;
+                startPosition: number;
+                endPosition: number;
+            }[];
+        } & {
+            id: string;
+            userId: string;
+            year: number | null;
+            documentType: string;
+            educationSystem: string;
+            level: string;
+            class: string | null;
+            subject: string | null;
+            board: string | null;
+            examType: string | null;
+            language: string;
+            fileName: string;
+            fileType: string;
+            fileUrl: string;
+            fileSize: number;
+            uploadMode: string;
+            chapterNumber: number | null;
+            chapterName: string | null;
+            processed: boolean;
+            extractionMethod: string | null;
+            extractionQuality: number | null;
+            verified: boolean;
+            isOfficial: boolean;
+            contentTier: string;
+            topic: string | null;
+            concept: string | null;
+            difficulty: string | null;
+            sourceUrl: string | null;
+            sourceDomain: string | null;
+            trustScore: number;
+            examRelevance: string | null;
+            realWorldApp: boolean;
+            interactive: boolean;
+            uploadDate: Date;
+        })[];
+        total: number;
+    }>;
+    deleteOfficialContent(documentId: string): Promise<{
+        success: boolean;
+        message: string;
+    }>;
     startScraping(subject: string, tier: string): Promise<{
         success: boolean;
         message: string;

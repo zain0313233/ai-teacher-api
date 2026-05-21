@@ -782,6 +782,54 @@ export class AdminService {
 
 
 
+  async getOfficialContent(filters: { subject?: string; documentType?: string; search?: string }) {
+    const where: any = { isOfficial: true };
+    if (filters.subject) where.subject = filters.subject;
+    if (filters.documentType) where.documentType = filters.documentType;
+    if (filters.search) {
+      where.OR = [
+        { fileName: { contains: filters.search, mode: 'insensitive' } },
+        { subject: { contains: filters.search, mode: 'insensitive' } },
+        { board: { contains: filters.search, mode: 'insensitive' } },
+        { chapterName: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const documents = await this.prisma.document.findMany({
+      where,
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        chapters: { orderBy: { chapterNumber: 'asc' } },
+      },
+      orderBy: { uploadDate: 'desc' },
+    });
+
+    return { success: true, documents, total: documents.length };
+  }
+
+  async deleteOfficialContent(documentId: string) {
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, isOfficial: true },
+    });
+
+    if (!document) {
+      throw new Error('Official document not found');
+    }
+
+    // Delete from Supabase storage
+    try {
+      await this.supabaseService.deleteFile(document.fileUrl);
+    } catch (err) {
+      console.warn('Supabase delete failed (file may already be gone):', err.message);
+    }
+
+    // Delete chapters + the document record
+    await this.prisma.chapter.deleteMany({ where: { documentId } });
+    await this.prisma.document.delete({ where: { id: documentId } });
+
+    return { success: true, message: 'Official content deleted successfully' };
+  }
+
   async startScraping(subject: string, tier: string) {
 
     // Trigger the Python scraping script
