@@ -8,7 +8,12 @@ import { Pool } from 'pg';
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor(configService: ConfigService) {
     const connectionString = configService.get<string>('DATABASE_URL');
-    const pool = new Pool({ connectionString });
+    const pool = new Pool({
+      connectionString,
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 10000,
+      max: 5,
+    });
     const adapter = new PrismaPg(pool as any);
     
     super({ adapter });

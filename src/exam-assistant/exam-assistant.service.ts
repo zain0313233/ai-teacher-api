@@ -1,6 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 
+export interface StudentContext {
+  education_level?: string;
+  class_grade?: string;
+  group?: string;
+  board?: string;
+  subjects?: string[];
+  target_exam?: string;
+}
+
 export interface ChatRequest {
   userId: string;
   message: string;
@@ -10,6 +19,7 @@ export interface ChatRequest {
     examType?: string;
     year?: number;
   };
+  studentContext?: StudentContext | null;
 }
 
 export interface ChatResponse {
@@ -18,10 +28,15 @@ export interface ChatResponse {
     results?: any[];
     total_results?: number;
     query?: string;
+    exam_preview?: any;
+    files?: Array<{ filename: string; data: string; size: number }>;
+    download_ready?: boolean;
   };
   message: string;
+  response?: string;
   tool_used: string;
   next_suggestions: string[];
+  suggestions?: string[];
 }
 
 @Injectable()
@@ -36,9 +51,10 @@ export class ExamAssistantService {
           user_id: chatRequest.userId,
           message: chatRequest.message,
           context: chatRequest.context,
+          student_context: chatRequest.studentContext ?? null,
         },
         {
-          timeout: 30000, // 30 seconds
+          timeout: 120000, // 120 seconds - exam generation can take a while
         }
       );
 

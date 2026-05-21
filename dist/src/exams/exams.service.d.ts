@@ -59,4 +59,5 @@ export declare class ExamsService {
         fileName: string;
     }>;
     private extractFileName;
+    private buildExamFileName;
 }

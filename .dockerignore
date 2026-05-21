@@ -1,0 +1,47 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build
+dist/
+build/
+
+# Testing
+coverage/
+.nyc_output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# Environment
+.env.local
+.env.*.local
+
+# Documentation
+*.md
+!README.md
+
+# Test files
+test/
+*.spec.ts
+*.e2e-spec.ts
+
+# Uploads (will be created in container)
+uploads/
+
+# Scripts
+scripts/
+*.sql
+
+# Misc
+.prettierrc
+eslint.config.mjs

@@ -62,6 +62,7 @@ let DocumentsController = class DocumentsController {
             class: classValue,
             educationSystem,
             documentType,
+            isOfficial: req.user.role === 'ADMIN',
             chapterMetadata: uploadMode === 'chapter' && chapterNumber && chapterName ? {
                 chapterNumber: parseInt(chapterNumber, 10),
                 chapterName: chapterName,
@@ -103,7 +104,7 @@ __decorate([
     (0, common_1.Post)('upload'),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', {
         limits: {
-            fileSize: 100 * 1024 * 1024,
+            fileSize: 50 * 1024 * 1024,
         },
     })),
     __param(0, (0, common_1.Request)()),

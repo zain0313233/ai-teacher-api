@@ -7,6 +7,7 @@ export declare class AdminController {
         message: string;
         document: {
             id: string;
+            board: string | null;
             userId: string;
             year: number | null;
             documentType: string;
@@ -14,7 +15,6 @@ export declare class AdminController {
             level: string;
             class: string | null;
             subject: string | null;
-            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;
@@ -74,6 +74,10 @@ export declare class AdminController {
             role: import("@prisma/client").$Enums.UserRole;
         };
     }>;
+    deleteUser(userId: string, req: any): Promise<{
+        success: boolean;
+        message: string;
+    }>;
     getPendingContent(req: any): Promise<{
         success: boolean;
         documents: ({
@@ -85,6 +89,7 @@ export declare class AdminController {
             };
         } & {
             id: string;
+            board: string | null;
             userId: string;
             year: number | null;
             documentType: string;
@@ -92,7 +97,6 @@ export declare class AdminController {
             level: string;
             class: string | null;
             subject: string | null;
-            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;
@@ -126,6 +130,7 @@ export declare class AdminController {
         message: string;
         document: {
             id: string;
+            board: string | null;
             userId: string;
             year: number | null;
             documentType: string;
@@ -133,7 +138,6 @@ export declare class AdminController {
             level: string;
             class: string | null;
             subject: string | null;
-            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;
@@ -166,6 +170,7 @@ export declare class AdminController {
         message: string;
         document: {
             id: string;
+            board: string | null;
             userId: string;
             year: number | null;
             documentType: string;
@@ -173,7 +178,6 @@ export declare class AdminController {
             level: string;
             class: string | null;
             subject: string | null;
-            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;
@@ -250,6 +254,65 @@ export declare class AdminController {
         success: boolean;
         message: string;
         settings: any;
+    }>;
+    getOfficialContent(subject: string, documentType: string, search: string, req: any): Promise<{
+        success: boolean;
+        documents: ({
+            user: {
+                id: string;
+                email: string;
+                name: string;
+            };
+            chapters: {
+                id: string;
+                createdAt: Date;
+                chapterNumber: number;
+                chapterName: string;
+                documentId: string;
+                startPosition: number;
+                endPosition: number;
+            }[];
+        } & {
+            id: string;
+            board: string | null;
+            userId: string;
+            year: number | null;
+            documentType: string;
+            educationSystem: string;
+            level: string;
+            class: string | null;
+            subject: string | null;
+            examType: string | null;
+            language: string;
+            fileName: string;
+            fileType: string;
+            fileUrl: string;
+            fileSize: number;
+            uploadMode: string;
+            chapterNumber: number | null;
+            chapterName: string | null;
+            processed: boolean;
+            extractionMethod: string | null;
+            extractionQuality: number | null;
+            verified: boolean;
+            isOfficial: boolean;
+            contentTier: string;
+            topic: string | null;
+            concept: string | null;
+            difficulty: string | null;
+            sourceUrl: string | null;
+            sourceDomain: string | null;
+            trustScore: number;
+            examRelevance: string | null;
+            realWorldApp: boolean;
+            interactive: boolean;
+            uploadDate: Date;
+        })[];
+        total: number;
+    }>;
+    deleteOfficialContent(documentId: string, req: any): Promise<{
+        success: boolean;
+        message: string;
     }>;
     startScraping(body: {
         subject: string;

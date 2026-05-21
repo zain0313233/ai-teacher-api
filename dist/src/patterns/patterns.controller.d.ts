@@ -67,4 +67,56 @@ export declare class PatternsController {
     createPatternWithAI(req: any, body: {
         prompt: string;
     }): Promise<any>;
+    listTemplates(board?: string, subject?: string, verified?: string): Promise<{
+        id: string;
+        name: string;
+        isVerified: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        educationLevel: string;
+        board: string;
+        subject: string;
+        totalMarks: number;
+        duration: number;
+        sections: import("@prisma/client/runtime/client").JsonValue;
+        lastUsed: Date | null;
+        country: string;
+        classLevel: string;
+        source: string;
+        confidence: number;
+        usageCount: number;
+        notes: string | null;
+        createdBy: string | null;
+        verifiedBy: string | null;
+    }[]>;
+    getTemplate(id: string): Promise<{
+        id: string;
+        name: string;
+        isVerified: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        educationLevel: string;
+        board: string;
+        subject: string;
+        totalMarks: number;
+        duration: number;
+        sections: import("@prisma/client/runtime/client").JsonValue;
+        lastUsed: Date | null;
+        country: string;
+        classLevel: string;
+        source: string;
+        confidence: number;
+        usageCount: number;
+        notes: string | null;
+        createdBy: string | null;
+        verifiedBy: string | null;
+    }>;
+    correctTemplate(req: any, id: string, body: {
+        name: string;
+        subject: string;
+        totalMarks: number;
+        duration: number;
+        sections: any[];
+        reason?: string;
+    }): Promise<any>;
 }

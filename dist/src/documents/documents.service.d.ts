@@ -9,12 +9,14 @@ export declare class DocumentsService {
         class?: string;
         educationSystem?: string;
         documentType?: string;
+        isOfficial?: boolean;
         chapterMetadata?: {
             chapterNumber: number;
             chapterName: string;
         };
     }): Promise<{
         id: string;
+        board: string | null;
         userId: string;
         year: number | null;
         documentType: string;
@@ -22,7 +24,6 @@ export declare class DocumentsService {
         level: string;
         class: string | null;
         subject: string | null;
-        board: string | null;
         examType: string | null;
         language: string;
         fileName: string;
@@ -52,6 +53,7 @@ export declare class DocumentsService {
     private processDocumentAsync;
     getUserDocuments(userId: string): Promise<{
         id: string;
+        board: string | null;
         userId: string;
         year: number | null;
         documentType: string;
@@ -59,7 +61,6 @@ export declare class DocumentsService {
         level: string;
         class: string | null;
         subject: string | null;
-        board: string | null;
         examType: string | null;
         language: string;
         fileName: string;
@@ -88,6 +89,7 @@ export declare class DocumentsService {
     }[]>;
     getDocumentById(documentId: string, userId: string): Promise<{
         id: string;
+        board: string | null;
         userId: string;
         year: number | null;
         documentType: string;
@@ -95,7 +97,6 @@ export declare class DocumentsService {
         level: string;
         class: string | null;
         subject: string | null;
-        board: string | null;
         examType: string | null;
         language: string;
         fileName: string;

@@ -94,6 +94,7 @@ let AdminService = class AdminService {
                 education_system: metadata.educationSystem,
                 document_type: metadata.documentType,
                 upload_mode: uploadMode,
+                is_official: true,
             };
             if (metadata.chapterMetadata) {
                 payload.chapter_number = metadata.chapterMetadata.chapterNumber;
@@ -202,6 +203,23 @@ let AdminService = class AdminService {
             success: true,
             message: 'User role updated successfully',
             user,
+        };
+    }
+    async deleteUser(userId) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, role: true, name: true, email: true },
+        });
+        if (!user) {
+            throw new Error('User not found');
+        }
+        if (user.role === 'ADMIN') {
+            throw new Error('Cannot delete admin accounts');
+        }
+        await this.prisma.user.delete({ where: { id: userId } });
+        return {
+            success: true,
+            message: `User "${user.name}" deleted successfully`,
         };
     }
     async getPendingContent() {
@@ -323,6 +341,47 @@ let AdminService = class AdminService {
             message: 'Settings updated successfully',
             settings,
         };
+    }
+    async getOfficialContent(filters) {
+        const where = { isOfficial: true };
+        if (filters.subject)
+            where.subject = filters.subject;
+        if (filters.documentType)
+            where.documentType = filters.documentType;
+        if (filters.search) {
+            where.OR = [
+                { fileName: { contains: filters.search, mode: 'insensitive' } },
+                { subject: { contains: filters.search, mode: 'insensitive' } },
+                { board: { contains: filters.search, mode: 'insensitive' } },
+                { chapterName: { contains: filters.search, mode: 'insensitive' } },
+            ];
+        }
+        const documents = await this.prisma.document.findMany({
+            where,
+            include: {
+                user: { select: { id: true, name: true, email: true } },
+                chapters: { orderBy: { chapterNumber: 'asc' } },
+            },
+            orderBy: { uploadDate: 'desc' },
+        });
+        return { success: true, documents, total: documents.length };
+    }
+    async deleteOfficialContent(documentId) {
+        const document = await this.prisma.document.findFirst({
+            where: { id: documentId, isOfficial: true },
+        });
+        if (!document) {
+            throw new Error('Official document not found');
+        }
+        try {
+            await this.supabaseService.deleteFile(document.fileUrl);
+        }
+        catch (err) {
+            console.warn('Supabase delete failed (file may already be gone):', err.message);
+        }
+        await this.prisma.chapter.deleteMany({ where: { documentId } });
+        await this.prisma.document.delete({ where: { id: documentId } });
+        return { success: true, message: 'Official content deleted successfully' };
     }
     async startScraping(subject, tier) {
         const { exec } = require('child_process');

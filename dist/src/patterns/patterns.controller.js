@@ -55,6 +55,16 @@ let PatternsController = class PatternsController {
         const result = await this.patternsService.createPatternWithAI(req.user.id, body.prompt);
         return result;
     }
+    async listTemplates(board, subject, verified) {
+        const isVerified = verified === 'true' ? true : verified === 'false' ? false : undefined;
+        return this.patternsService.listTemplates({ board, subject, isVerified });
+    }
+    async getTemplate(id) {
+        return this.patternsService.getTemplate(id);
+    }
+    async correctTemplate(req, id, body) {
+        return this.patternsService.correctPattern(id, { name: body.name, subject: body.subject, totalMarks: body.totalMarks, duration: body.duration, sections: body.sections }, req.user.id, body.reason);
+    }
 };
 exports.PatternsController = PatternsController;
 __decorate([
@@ -120,6 +130,31 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], PatternsController.prototype, "createPatternWithAI", null);
+__decorate([
+    (0, common_1.Get)('templates/list'),
+    __param(0, (0, common_1.Query)('board')),
+    __param(1, (0, common_1.Query)('subject')),
+    __param(2, (0, common_1.Query)('verified')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", Promise)
+], PatternsController.prototype, "listTemplates", null);
+__decorate([
+    (0, common_1.Get)('templates/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], PatternsController.prototype, "getTemplate", null);
+__decorate([
+    (0, common_1.Patch)('templates/:id/correct'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:returntype", Promise)
+], PatternsController.prototype, "correctTemplate", null);
 exports.PatternsController = PatternsController = __decorate([
     (0, common_1.Controller)('patterns'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

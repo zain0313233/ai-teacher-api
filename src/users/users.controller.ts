@@ -37,6 +37,18 @@ export class UsersController {
     };
   }
 
+  @Get('me/profile')
+  async getMyProfile(@Request() req) {
+    const profile = await this.usersService.getMyProfile(req.user.id);
+    return { success: true, ...profile };
+  }
+
+  @Patch('me/profile')
+  async updateMyProfile(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
+    const profile = await this.usersService.updateMyProfile(req.user.id, updateProfileDto);
+    return { success: true, ...profile };
+  }
+
   @Patch('plan')
   async updatePlan(@Request() req, @Body() updatePlanDto: UpdatePlanDto) {
     const user = await this.usersService.updatePlan(

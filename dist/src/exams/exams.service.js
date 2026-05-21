@@ -133,11 +133,12 @@ let ExamsService = class ExamsService {
                     fileUrls: [],
                 },
             });
+            const fallbackName = this.buildExamFileName(examData.subject, examData.class, examData.examType);
             return {
                 examId: exam.id,
                 fileBuffer: response.data,
                 contentType: response.headers['content-type'],
-                fileName: this.extractFileName(response.headers['content-disposition']),
+                fileName: this.extractFileName(response.headers['content-disposition'], fallbackName),
             };
         }
         catch (error) {
@@ -145,11 +146,23 @@ let ExamsService = class ExamsService {
             throw error;
         }
     }
-    extractFileName(contentDisposition) {
+    extractFileName(contentDisposition, fallback = 'exam.docx') {
         if (!contentDisposition)
-            return 'exam.docx';
-        const match = contentDisposition.match(/filename="?(.+?)"?$/);
-        return match ? match[1] : 'exam.docx';
+            return fallback;
+        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+        return match ? match[1] : fallback;
+    }
+    buildExamFileName(subject, className, examType) {
+        const safeSubject = (subject || 'Exam').replace(/\s+/g, '_');
+        const safeClass = className ? `_Class${className}` : '';
+        const typeMap = {
+            'quiz': 'Quiz',
+            'mid-term': 'Mid_Term',
+            'final': 'Final_Exam',
+            'practical': 'Practical',
+        };
+        const safeType = typeMap[examType?.toLowerCase()] || (examType || 'Exam').replace(/[\s-]+/g, '_');
+        return `${safeSubject}${safeClass}_${safeType}.docx`;
     }
 };
 exports.ExamsService = ExamsService;

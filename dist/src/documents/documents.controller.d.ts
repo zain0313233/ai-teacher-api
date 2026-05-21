@@ -6,6 +6,7 @@ export declare class DocumentsController {
     constructor(documentsService: DocumentsService, supabaseService: SupabaseService);
     uploadDocument(req: any, file: Express.Multer.File, body: any): Promise<{
         id: string;
+        board: string | null;
         userId: string;
         year: number | null;
         documentType: string;
@@ -13,7 +14,6 @@ export declare class DocumentsController {
         level: string;
         class: string | null;
         subject: string | null;
-        board: string | null;
         examType: string | null;
         language: string;
         fileName: string;
@@ -43,6 +43,7 @@ export declare class DocumentsController {
     getChapters(req: any, subject: string): Promise<any>;
     getUserDocuments(req: any): Promise<{
         id: string;
+        board: string | null;
         userId: string;
         year: number | null;
         documentType: string;
@@ -50,7 +51,6 @@ export declare class DocumentsController {
         level: string;
         class: string | null;
         subject: string | null;
-        board: string | null;
         examType: string | null;
         language: string;
         fileName: string;
@@ -79,6 +79,7 @@ export declare class DocumentsController {
     }[]>;
     getDocument(req: any, id: string): Promise<{
         id: string;
+        board: string | null;
         userId: string;
         year: number | null;
         documentType: string;
@@ -86,7 +87,6 @@ export declare class DocumentsController {
         level: string;
         class: string | null;
         subject: string | null;
-        board: string | null;
         examType: string | null;
         language: string;
         fileName: string;

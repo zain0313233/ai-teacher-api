@@ -65,6 +65,15 @@ export class AdminController {
     return this.adminService.updateUserRole(userId, role);
   }
 
+  // Delete user (non-admin only)
+  @Delete('users/:id')
+  async deleteUser(@Param('id') userId: string, @Request() req) {
+    if (req.user.role !== 'ADMIN') {
+      throw new Error('Unauthorized: Admin access required');
+    }
+    return this.adminService.deleteUser(userId);
+  }
+
   // Get pending content for verification
   @Get('verification/pending')
   async getPendingContent(@Request() req) {
@@ -123,6 +132,29 @@ export class AdminController {
     }
 
     return this.adminService.updateSettings(settings);
+  }
+
+  // List all official uploaded content
+  @Get('content')
+  async getOfficialContent(
+    @Query('subject') subject: string,
+    @Query('documentType') documentType: string,
+    @Query('search') search: string,
+    @Request() req,
+  ) {
+    if (req.user.role !== 'ADMIN') {
+      throw new Error('Unauthorized: Admin access required');
+    }
+    return this.adminService.getOfficialContent({ subject, documentType, search });
+  }
+
+  // Delete official content
+  @Delete('content/:id')
+  async deleteOfficialContent(@Param('id') documentId: string, @Request() req) {
+    if (req.user.role !== 'ADMIN') {
+      throw new Error('Unauthorized: Admin access required');
+    }
+    return this.adminService.deleteOfficialContent(documentId);
   }
 
   // Start content scraping

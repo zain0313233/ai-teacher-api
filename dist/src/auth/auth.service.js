@@ -70,22 +70,52 @@ let AuthService = class AuthService {
             throw new common_1.ConflictException('User already exists');
         }
         const hashedPassword = await (0, password_util_1.hashPassword)(password);
-        const user = await this.prisma.user.create({
-            data: {
-                name,
-                email,
-                password: hashedPassword,
-                role: role || 'USER',
-            },
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                role: true,
-                plan: true,
-                isVerified: true,
-                createdAt: true,
-            },
+        const resolvedRole = role || 'USER';
+        const user = await this.prisma.$transaction(async (tx) => {
+            const newUser = await tx.user.create({
+                data: {
+                    name,
+                    email,
+                    password: hashedPassword,
+                    role: resolvedRole,
+                },
+                select: {
+                    id: true, name: true, email: true,
+                    role: true, plan: true, isVerified: true, createdAt: true,
+                },
+            });
+            if (resolvedRole === 'USER') {
+                await tx.studentProfile.create({
+                    data: {
+                        userId: newUser.id,
+                        educationLevel: registerDto.educationLevel || 'matric',
+                        classGrade: registerDto.classGrade || null,
+                        group: registerDto.group || null,
+                        board: registerDto.board || null,
+                        degree: registerDto.degree || null,
+                        semester: registerDto.semester || null,
+                        subjects: registerDto.subjects || [],
+                        targetExam: registerDto.targetExam || null,
+                        schoolName: registerDto.schoolName || null,
+                        city: registerDto.city || null,
+                    },
+                });
+            }
+            if (resolvedRole === 'TEACHER') {
+                await tx.teacherProfile.create({
+                    data: {
+                        userId: newUser.id,
+                        subjectsTaught: registerDto.subjectsTaught || [],
+                        classesTaught: registerDto.classesTaught || [],
+                        board: registerDto.board || null,
+                        institutionType: registerDto.institutionType || null,
+                        schoolName: registerDto.schoolName || null,
+                        city: registerDto.city || null,
+                        experienceYears: registerDto.experienceYears ?? null,
+                    },
+                });
+            }
+            return newUser;
         });
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         await this.prisma.otpCode.create({
@@ -167,6 +197,11 @@ let AuthService = class AuthService {
                 expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
             },
         });
+        const profile = user.role === 'USER'
+            ? await this.prisma.studentProfile.findUnique({ where: { userId: user.id } })
+            : user.role === 'TEACHER'
+                ? await this.prisma.teacherProfile.findUnique({ where: { userId: user.id } })
+                : null;
         return {
             accessToken,
             refreshToken,
@@ -177,6 +212,7 @@ let AuthService = class AuthService {
                 role: user.role,
                 plan: user.plan,
             },
+            profile,
         };
     }
     async forgotPassword(email) {
