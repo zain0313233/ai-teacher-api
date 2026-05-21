@@ -37,6 +37,14 @@ let UsersController = class UsersController {
             user,
         };
     }
+    async getMyProfile(req) {
+        const profile = await this.usersService.getMyProfile(req.user.id);
+        return { success: true, ...profile };
+    }
+    async updateMyProfile(req, updateProfileDto) {
+        const profile = await this.usersService.updateMyProfile(req.user.id, updateProfileDto);
+        return { success: true, ...profile };
+    }
     async updatePlan(req, updatePlanDto) {
         const user = await this.usersService.updatePlan(req.user.id, updatePlanDto.plan);
         return {
@@ -61,6 +69,21 @@ __decorate([
     __metadata("design:paramtypes", [Object, update_profile_dto_1.UpdateProfileDto]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "updateProfile", null);
+__decorate([
+    (0, common_1.Get)('me/profile'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "getMyProfile", null);
+__decorate([
+    (0, common_1.Patch)('me/profile'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, update_profile_dto_1.UpdateProfileDto]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "updateMyProfile", null);
 __decorate([
     (0, common_1.Patch)('plan'),
     __param(0, (0, common_1.Request)()),

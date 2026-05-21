@@ -1,3 +1,11 @@
+export interface StudentContext {
+    education_level?: string;
+    class_grade?: string;
+    group?: string;
+    board?: string;
+    subjects?: string[];
+    target_exam?: string;
+}
 export interface ChatRequest {
     userId: string;
     message: string;
@@ -7,6 +15,7 @@ export interface ChatRequest {
         examType?: string;
         year?: number;
     };
+    studentContext?: StudentContext | null;
 }
 export interface ChatResponse {
     success: boolean;

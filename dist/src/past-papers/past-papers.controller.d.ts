@@ -12,11 +12,11 @@ export declare class PastPapersController {
         pastPapers: {
             id: string;
             createdAt: Date;
+            board: string;
             userId: string;
             year: number;
             class: string;
             subject: string;
-            board: string;
             examType: string;
             fileName: string;
             fileUrl: string;

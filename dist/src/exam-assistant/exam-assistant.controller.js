@@ -16,16 +16,39 @@ exports.ExamAssistantController = void 0;
 const common_1 = require("@nestjs/common");
 const exam_assistant_service_1 = require("./exam-assistant.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const prisma_service_1 = require("../prisma/prisma.service");
 let ExamAssistantController = class ExamAssistantController {
     examAssistantService;
-    constructor(examAssistantService) {
+    prisma;
+    constructor(examAssistantService, prisma) {
         this.examAssistantService = examAssistantService;
+        this.prisma = prisma;
     }
     async chat(req, body) {
+        const userId = req.user.id;
+        const profile = await this.prisma.studentProfile.findUnique({
+            where: { userId },
+            select: {
+                educationLevel: true,
+                classGrade: true,
+                group: true,
+                board: true,
+                subjects: true,
+                targetExam: true,
+            },
+        }).catch(() => null);
         const result = await this.examAssistantService.chat({
-            userId: req.user.id,
+            userId,
             message: body.message,
             context: body.context,
+            studentContext: profile ? {
+                education_level: profile.educationLevel,
+                class_grade: profile.classGrade ?? undefined,
+                group: profile.group ?? undefined,
+                board: profile.board ?? undefined,
+                subjects: profile.subjects,
+                target_exam: profile.targetExam ?? undefined,
+            } : null,
         });
         return result;
     }
@@ -74,6 +97,7 @@ __decorate([
 exports.ExamAssistantController = ExamAssistantController = __decorate([
     (0, common_1.Controller)('exam-assistant'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __metadata("design:paramtypes", [exam_assistant_service_1.ExamAssistantService])
+    __metadata("design:paramtypes", [exam_assistant_service_1.ExamAssistantService,
+        prisma_service_1.PrismaService])
 ], ExamAssistantController);
 //# sourceMappingURL=exam-assistant.controller.js.map

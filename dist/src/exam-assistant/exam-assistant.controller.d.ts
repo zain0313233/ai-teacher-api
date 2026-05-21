@@ -1,7 +1,9 @@
 import { ExamAssistantService } from './exam-assistant.service';
+import { PrismaService } from '../prisma/prisma.service';
 export declare class ExamAssistantController {
     private readonly examAssistantService;
-    constructor(examAssistantService: ExamAssistantService);
+    private readonly prisma;
+    constructor(examAssistantService: ExamAssistantService, prisma: PrismaService);
     chat(req: any, body: {
         message: string;
         context?: any;

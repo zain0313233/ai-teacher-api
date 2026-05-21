@@ -35,6 +35,48 @@ let UsersService = class UsersService {
         }
         return user;
     }
+    async getMyProfile(userId) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                studentProfile: true,
+                teacherProfile: true,
+            },
+        });
+        if (!user)
+            throw new common_1.NotFoundException('User not found');
+        const { password, ...safeUser } = user;
+        return safeUser;
+    }
+    async updateMyProfile(userId, dto) {
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (!user)
+            throw new common_1.NotFoundException('User not found');
+        if (dto.name) {
+            await this.prisma.user.update({
+                where: { id: userId },
+                data: { name: dto.name },
+            });
+        }
+        const { name, ...profileData } = dto;
+        if (user.role === 'USER') {
+            const { subjectsTaught, classesTaught, institutionType, experienceYears, ...studentData } = profileData;
+            await this.prisma.studentProfile.upsert({
+                where: { userId },
+                create: { userId, educationLevel: 'matric', ...studentData },
+                update: { ...studentData },
+            });
+        }
+        else if (user.role === 'TEACHER') {
+            const { educationLevel, classGrade, group, degree, semester, subjects, targetExam, ...teacherData } = profileData;
+            await this.prisma.teacherProfile.upsert({
+                where: { userId },
+                create: { userId, ...teacherData },
+                update: { ...teacherData },
+            });
+        }
+        return this.getMyProfile(userId);
+    }
     async updateProfile(userId, data) {
         const user = await this.prisma.user.update({
             where: { id: userId },

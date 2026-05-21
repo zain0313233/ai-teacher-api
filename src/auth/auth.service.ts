@@ -25,6 +25,7 @@ export class AuthService {
 
   async register(registerDto: RegisterDto) {
     const { name, email, password, role } = registerDto;
+    /* full dto kept for profile creation below */
 
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
@@ -35,23 +36,56 @@ export class AuthService {
     }
 
     const hashedPassword = await hashPassword(password);
+    const resolvedRole = (role as string) || 'USER';
 
-    const user = await this.prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        role: role as any || 'USER', // Default to USER if not provided
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        plan: true,
-        isVerified: true,
-        createdAt: true,
-      },
+    const user = await this.prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          name,
+          email,
+          password: hashedPassword,
+          role: resolvedRole as any,
+        },
+        select: {
+          id: true, name: true, email: true,
+          role: true, plan: true, isVerified: true, createdAt: true,
+        },
+      });
+
+      if (resolvedRole === 'USER') {
+        await tx.studentProfile.create({
+          data: {
+            userId:         newUser.id,
+            educationLevel: registerDto.educationLevel || 'matric',
+            classGrade:     registerDto.classGrade     || null,
+            group:          registerDto.group          || null,
+            board:          registerDto.board          || null,
+            degree:         registerDto.degree         || null,
+            semester:       registerDto.semester       || null,
+            subjects:       registerDto.subjects       || [],
+            targetExam:     registerDto.targetExam     || null,
+            schoolName:     registerDto.schoolName     || null,
+            city:           registerDto.city           || null,
+          },
+        });
+      }
+
+      if (resolvedRole === 'TEACHER') {
+        await tx.teacherProfile.create({
+          data: {
+            userId:          newUser.id,
+            subjectsTaught:  registerDto.subjectsTaught  || [],
+            classesTaught:   registerDto.classesTaught   || [],
+            board:           registerDto.board           || null,
+            institutionType: registerDto.institutionType || null,
+            schoolName:      registerDto.schoolName      || null,
+            city:            registerDto.city            || null,
+            experienceYears: registerDto.experienceYears ?? null,
+          },
+        });
+      }
+
+      return newUser;
     });
 
     // Generate 6-digit OTP
@@ -167,6 +201,12 @@ export class AuthService {
       },
     });
 
+    const profile = user.role === 'USER'
+      ? await this.prisma.studentProfile.findUnique({ where: { userId: user.id } })
+      : user.role === 'TEACHER'
+        ? await this.prisma.teacherProfile.findUnique({ where: { userId: user.id } })
+        : null;
+
     return {
       accessToken,
       refreshToken,
@@ -177,6 +217,7 @@ export class AuthService {
         role: user.role,
         plan: user.plan,
       },
+      profile,
     };
   }
 

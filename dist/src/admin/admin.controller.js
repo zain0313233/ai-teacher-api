@@ -40,6 +40,12 @@ let AdminController = class AdminController {
         }
         return this.adminService.updateUserRole(userId, role);
     }
+    async deleteUser(userId, req) {
+        if (req.user.role !== 'ADMIN') {
+            throw new Error('Unauthorized: Admin access required');
+        }
+        return this.adminService.deleteUser(userId);
+    }
     async getPendingContent(req) {
         if (req.user.role !== 'ADMIN') {
             throw new Error('Unauthorized: Admin access required');
@@ -136,6 +142,14 @@ __decorate([
     __metadata("design:paramtypes", [String, String, Object]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "updateUserRole", null);
+__decorate([
+    (0, common_1.Delete)('users/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "deleteUser", null);
 __decorate([
     (0, common_1.Get)('verification/pending'),
     __param(0, (0, common_1.Request)()),

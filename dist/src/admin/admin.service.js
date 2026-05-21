@@ -205,6 +205,23 @@ let AdminService = class AdminService {
             user,
         };
     }
+    async deleteUser(userId) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, role: true, name: true, email: true },
+        });
+        if (!user) {
+            throw new Error('User not found');
+        }
+        if (user.role === 'ADMIN') {
+            throw new Error('Cannot delete admin accounts');
+        }
+        await this.prisma.user.delete({ where: { id: userId } });
+        return {
+            success: true,
+            message: `User "${user.name}" deleted successfully`,
+        };
+    }
     async getPendingContent() {
         const documents = await this.prisma.document.findMany({
             where: {

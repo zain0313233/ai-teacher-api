@@ -7,6 +7,7 @@ export declare class AdminController {
         message: string;
         document: {
             id: string;
+            board: string | null;
             userId: string;
             year: number | null;
             documentType: string;
@@ -14,7 +15,6 @@ export declare class AdminController {
             level: string;
             class: string | null;
             subject: string | null;
-            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;
@@ -74,6 +74,10 @@ export declare class AdminController {
             role: import("@prisma/client").$Enums.UserRole;
         };
     }>;
+    deleteUser(userId: string, req: any): Promise<{
+        success: boolean;
+        message: string;
+    }>;
     getPendingContent(req: any): Promise<{
         success: boolean;
         documents: ({
@@ -85,6 +89,7 @@ export declare class AdminController {
             };
         } & {
             id: string;
+            board: string | null;
             userId: string;
             year: number | null;
             documentType: string;
@@ -92,7 +97,6 @@ export declare class AdminController {
             level: string;
             class: string | null;
             subject: string | null;
-            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;
@@ -126,6 +130,7 @@ export declare class AdminController {
         message: string;
         document: {
             id: string;
+            board: string | null;
             userId: string;
             year: number | null;
             documentType: string;
@@ -133,7 +138,6 @@ export declare class AdminController {
             level: string;
             class: string | null;
             subject: string | null;
-            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;
@@ -166,6 +170,7 @@ export declare class AdminController {
         message: string;
         document: {
             id: string;
+            board: string | null;
             userId: string;
             year: number | null;
             documentType: string;
@@ -173,7 +178,6 @@ export declare class AdminController {
             level: string;
             class: string | null;
             subject: string | null;
-            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;
@@ -270,6 +274,7 @@ export declare class AdminController {
             }[];
         } & {
             id: string;
+            board: string | null;
             userId: string;
             year: number | null;
             documentType: string;
@@ -277,7 +282,6 @@ export declare class AdminController {
             level: string;
             class: string | null;
             subject: string | null;
-            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;
