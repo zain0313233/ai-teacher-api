@@ -4,21 +4,7 @@ export declare class ExamsService {
     private prisma;
     private readonly fastApiUrl;
     constructor(prisma: PrismaService);
-    generateExam(userId: string, generateExamDto: GenerateExamDto): Promise<{
-        id: string;
-        createdAt: Date;
-        userId: string;
-        class: string;
-        subject: string;
-        examType: string;
-        topics: string[];
-        section: string;
-        chapterStart: number | null;
-        chapterEnd: number | null;
-        examContent: import("@prisma/client/runtime/client").JsonValue;
-        fileUrls: string[];
-        patternId: string | null;
-    }>;
+    generateExam(_userId: string, _generateExamDto: GenerateExamDto): Promise<void>;
     getUserExams(userId: string): Promise<{
         id: string;
         createdAt: Date;
@@ -30,9 +16,9 @@ export declare class ExamsService {
         section: string;
         chapterStart: number | null;
         chapterEnd: number | null;
+        patternId: string | null;
         examContent: import("@prisma/client/runtime/client").JsonValue;
         fileUrls: string[];
-        patternId: string | null;
     }[]>;
     getExamById(examId: string, userId: string): Promise<{
         id: string;
@@ -45,9 +31,9 @@ export declare class ExamsService {
         section: string;
         chapterStart: number | null;
         chapterEnd: number | null;
+        patternId: string | null;
         examContent: import("@prisma/client/runtime/client").JsonValue;
         fileUrls: string[];
-        patternId: string | null;
     }>;
     deleteExam(examId: string, userId: string): Promise<{
         message: string;

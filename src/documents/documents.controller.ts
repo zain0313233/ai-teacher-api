@@ -144,6 +144,11 @@ export class DocumentsController {
     };
   }
 
+  @Post(':id/reprocess')
+  async reprocessDocument(@Request() req, @Param('id') id: string) {
+    return this.documentsService.reprocessDocument(id, { userId: req.user.id });
+  }
+
   @Delete(':id')
   async deleteDocument(@Request() req, @Param('id') id: string) {
     const result = await this.documentsService.deleteDocument(id, req.user.id);

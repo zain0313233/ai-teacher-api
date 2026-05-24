@@ -148,6 +148,15 @@ export class AdminController {
     return this.adminService.getOfficialContent({ subject, documentType, search });
   }
 
+  // Reprocess official content (same Supabase file, refresh Pinecone + metadata)
+  @Post('content/:id/reprocess')
+  async reprocessOfficialContent(@Param('id') documentId: string, @Request() req) {
+    if (req.user.role !== 'ADMIN') {
+      throw new Error('Unauthorized: Admin access required');
+    }
+    return this.adminService.reprocessOfficialContent(documentId);
+  }
+
   // Delete official content
   @Delete('content/:id')
   async deleteOfficialContent(@Param('id') documentId: string, @Request() req) {

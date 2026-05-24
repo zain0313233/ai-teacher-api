@@ -119,6 +119,15 @@ export declare class DocumentsController {
         processed: boolean;
         status: string;
     }>;
+    reprocessDocument(req: any, id: string): Promise<{
+        success: boolean;
+        message: string;
+        document: {
+            id: string;
+            fileName: string;
+            processed: boolean;
+        };
+    }>;
     deleteDocument(req: any, id: string): Promise<{
         message: string;
     }>;

@@ -62,6 +62,35 @@ let PatternsService = class PatternsService {
         }
         return pattern;
     }
+    async resolvePatternForGeneration(userId, subject, patternId) {
+        if (patternId) {
+            const pattern = await this.getPatternById(patternId, userId);
+            return this.toGenerationPayload(pattern);
+        }
+        const patterns = await this.prisma.pattern.findMany({
+            where: { userId },
+            orderBy: [{ lastUsed: 'desc' }, { updatedAt: 'desc' }],
+        });
+        if (!patterns.length) {
+            return null;
+        }
+        const norm = subject.trim().toLowerCase();
+        const match = patterns.find((p) => p.subject.trim().toLowerCase() === norm) ||
+            patterns.find((p) => p.subject.trim().toLowerCase().includes(norm)) ||
+            patterns.find((p) => norm.includes(p.subject.trim().toLowerCase())) ||
+            patterns[0];
+        return match ? this.toGenerationPayload(match) : null;
+    }
+    toGenerationPayload(pattern) {
+        return {
+            name: pattern.name,
+            subject: pattern.subject,
+            totalMarks: pattern.totalMarks,
+            duration: pattern.duration,
+            sections: pattern.sections,
+            instructions: 'Read all questions carefully. Answer all questions.',
+        };
+    }
     async updatePattern(patternId, userId, updatePatternDto) {
         const pattern = await this.prisma.pattern.findFirst({
             where: {

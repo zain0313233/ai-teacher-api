@@ -22,8 +22,8 @@ export declare class PatternsService {
     private tavilyClient;
     constructor(prisma: PrismaService);
     createPattern(userId: string, createPatternDto: CreatePatternDto): Promise<{
-        id: string;
         name: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         userId: string;
@@ -34,8 +34,8 @@ export declare class PatternsService {
         lastUsed: Date | null;
     }>;
     getUserPatterns(userId: string): Promise<{
-        id: string;
         name: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         userId: string;
@@ -46,8 +46,8 @@ export declare class PatternsService {
         lastUsed: Date | null;
     }[]>;
     getPatternById(patternId: string, userId: string): Promise<{
-        id: string;
         name: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         userId: string;
@@ -57,9 +57,18 @@ export declare class PatternsService {
         sections: import("@prisma/client/runtime/client").JsonValue;
         lastUsed: Date | null;
     }>;
-    updatePattern(patternId: string, userId: string, updatePatternDto: UpdatePatternDto): Promise<{
-        id: string;
+    resolvePatternForGeneration(userId: string, subject: string, patternId?: string): Promise<{
         name: string;
+        subject: string;
+        totalMarks: number;
+        duration: number;
+        sections: unknown;
+        instructions: string;
+    } | null>;
+    private toGenerationPayload;
+    updatePattern(patternId: string, userId: string, updatePatternDto: UpdatePatternDto): Promise<{
+        name: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         userId: string;
@@ -89,8 +98,8 @@ export declare class PatternsService {
         subject?: string;
         isVerified?: boolean;
     }): Promise<{
-        id: string;
         name: string;
+        id: string;
         isVerified: boolean;
         createdAt: Date;
         updatedAt: Date;
@@ -111,8 +120,8 @@ export declare class PatternsService {
         verifiedBy: string | null;
     }[]>;
     getTemplate(id: string): Promise<{
-        id: string;
         name: string;
+        id: string;
         isVerified: boolean;
         createdAt: Date;
         updatedAt: Date;

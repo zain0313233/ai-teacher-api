@@ -4,6 +4,8 @@ import { PrismaService } from '../prisma/prisma.service';
 
 import { SupabaseService } from '../documents/supabase.service';
 
+import { DocumentsService } from '../documents/documents.service';
+
 import axios from 'axios';
 
 
@@ -21,6 +23,8 @@ export class AdminService {
     private prisma: PrismaService,
 
     private supabaseService: SupabaseService,
+
+    private documentsService: DocumentsService,
 
   ) {}
 
@@ -214,7 +218,7 @@ export class AdminService {
 
         level: metadata.level,
 
-        class: metadata.class,
+        class_level: metadata.class,
 
         education_system: metadata.educationSystem,
 
@@ -829,6 +833,10 @@ export class AdminService {
     return { success: true, documents, total: documents.length };
   }
 
+  async reprocessOfficialContent(documentId: string) {
+    return this.documentsService.reprocessDocument(documentId, { asAdmin: true });
+  }
+
   async deleteOfficialContent(documentId: string) {
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, isOfficial: true },
@@ -837,6 +845,8 @@ export class AdminService {
     if (!document) {
       throw new Error('Official document not found');
     }
+
+    await this.documentsService.deletePineconeVectors(documentId);
 
     // Delete from Supabase storage
     try {

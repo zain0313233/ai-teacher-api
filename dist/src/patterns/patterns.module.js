@@ -9,16 +9,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PatternsModule = void 0;
 const common_1 = require("@nestjs/common");
 const patterns_controller_1 = require("./patterns.controller");
+const patterns_internal_controller_1 = require("./patterns-internal.controller");
 const patterns_service_1 = require("./patterns.service");
 const prisma_module_1 = require("../prisma/prisma.module");
+const internal_api_guard_1 = require("../common/guards/internal-api.guard");
 let PatternsModule = class PatternsModule {
 };
 exports.PatternsModule = PatternsModule;
 exports.PatternsModule = PatternsModule = __decorate([
     (0, common_1.Module)({
         imports: [prisma_module_1.PrismaModule],
-        controllers: [patterns_controller_1.PatternsController],
-        providers: [patterns_service_1.PatternsService],
+        controllers: [patterns_controller_1.PatternsController, patterns_internal_controller_1.PatternsInternalController],
+        providers: [patterns_service_1.PatternsService, internal_api_guard_1.InternalApiGuard],
         exports: [patterns_service_1.PatternsService],
     })
 ], PatternsModule);

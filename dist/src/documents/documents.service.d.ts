@@ -127,6 +127,19 @@ export declare class DocumentsService {
         message: string;
     }>;
     markAsProcessed(documentId: string): Promise<void>;
+    deletePineconeVectors(documentId: string): Promise<void>;
+    reprocessDocument(documentId: string, options?: {
+        userId?: string;
+        asAdmin?: boolean;
+    }): Promise<{
+        success: boolean;
+        message: string;
+        document: {
+            id: string;
+            fileName: string;
+            processed: boolean;
+        };
+    }>;
     private storeChapters;
     getChaptersBySubject(userId: string, subject: string): Promise<any>;
 }

@@ -16,14 +16,17 @@ exports.AdminService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const supabase_service_1 = require("../documents/supabase.service");
+const documents_service_1 = require("../documents/documents.service");
 const axios_1 = __importDefault(require("axios"));
 let AdminService = class AdminService {
     prisma;
     supabaseService;
+    documentsService;
     fastApiUrl = process.env.FASTAPI_URL || 'http://localhost:8000';
-    constructor(prisma, supabaseService) {
+    constructor(prisma, supabaseService, documentsService) {
         this.prisma = prisma;
         this.supabaseService = supabaseService;
+        this.documentsService = documentsService;
     }
     async uploadOfficialContent(file, metadata, adminId) {
         try {
@@ -90,7 +93,7 @@ let AdminService = class AdminService {
                 user_id: userId,
                 subject: metadata.subject,
                 level: metadata.level,
-                class: metadata.class,
+                class_level: metadata.class,
                 education_system: metadata.educationSystem,
                 document_type: metadata.documentType,
                 upload_mode: uploadMode,
@@ -366,6 +369,9 @@ let AdminService = class AdminService {
         });
         return { success: true, documents, total: documents.length };
     }
+    async reprocessOfficialContent(documentId) {
+        return this.documentsService.reprocessDocument(documentId, { asAdmin: true });
+    }
     async deleteOfficialContent(documentId) {
         const document = await this.prisma.document.findFirst({
             where: { id: documentId, isOfficial: true },
@@ -373,6 +379,7 @@ let AdminService = class AdminService {
         if (!document) {
             throw new Error('Official document not found');
         }
+        await this.documentsService.deletePineconeVectors(documentId);
         try {
             await this.supabaseService.deleteFile(document.fileUrl);
         }
@@ -464,6 +471,7 @@ exports.AdminService = AdminService;
 exports.AdminService = AdminService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        supabase_service_1.SupabaseService])
+        supabase_service_1.SupabaseService,
+        documents_service_1.DocumentsService])
 ], AdminService);
 //# sourceMappingURL=admin.service.js.map

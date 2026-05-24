@@ -130,12 +130,7 @@ let DocumentsService = class DocumentsService {
         if (!document) {
             throw new common_1.NotFoundException('Document not found');
         }
-        try {
-            await axios_1.default.delete(`${this.fastApiUrl}/documents/${documentId}`);
-        }
-        catch (error) {
-            console.error('FastAPI deletion error:', error.message);
-        }
+        await this.deletePineconeVectors(documentId);
         await this.prisma.document.delete({
             where: { id: documentId },
         });
@@ -146,6 +141,65 @@ let DocumentsService = class DocumentsService {
             where: { id: documentId },
             data: { processed: true },
         });
+    }
+    async deletePineconeVectors(documentId) {
+        try {
+            await axios_1.default.delete(`${this.fastApiUrl}/documents/${documentId}`);
+        }
+        catch (error) {
+            console.error('Pinecone deletion error:', error.message);
+        }
+    }
+    async reprocessDocument(documentId, options) {
+        const where = {
+            id: documentId,
+        };
+        if (options?.asAdmin) {
+            where.isOfficial = true;
+        }
+        else if (options?.userId) {
+            where.userId = options.userId;
+        }
+        else {
+            throw new common_1.BadRequestException('userId or asAdmin is required');
+        }
+        const document = await this.prisma.document.findFirst({ where });
+        if (!document) {
+            throw new common_1.NotFoundException('Document not found');
+        }
+        if (!document.fileUrl?.trim()) {
+            throw new common_1.BadRequestException('Document has no file URL — re-upload the PDF instead');
+        }
+        await this.deletePineconeVectors(documentId);
+        await this.prisma.document.update({
+            where: { id: documentId },
+            data: { processed: false },
+        });
+        const uploadMode = document.uploadMode === 'chapter' ? 'chapter' : document.uploadMode || 'fullbook';
+        const chapterMetadata = document.chapterNumber != null && document.chapterName
+            ? {
+                chapterNumber: document.chapterNumber,
+                chapterName: document.chapterName,
+            }
+            : undefined;
+        this.processDocumentAsync(document.id, document.fileUrl, document.fileType, document.userId, {
+            subject: document.subject ?? undefined,
+            level: document.level ?? undefined,
+            class: document.class ?? undefined,
+            educationSystem: document.educationSystem ?? undefined,
+            documentType: document.documentType ?? undefined,
+            isOfficial: document.isOfficial,
+            chapterMetadata,
+        }, uploadMode);
+        return {
+            success: true,
+            message: 'Reprocessing started. The file in storage will be re-indexed (watch AI engine logs).',
+            document: {
+                id: document.id,
+                fileName: document.fileName,
+                processed: false,
+            },
+        };
     }
     async storeChapters(documentId, chapters) {
         for (const chapter of chapters) {

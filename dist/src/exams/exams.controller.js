@@ -37,7 +37,8 @@ let ExamsController = class ExamsController {
             res.send(Buffer.from(result.fileBuffer));
         }
         catch (error) {
-            res.status(500).json({
+            const status = typeof error.getStatus === 'function' ? error.getStatus() : 500;
+            res.status(status).json({
                 success: false,
                 message: error.message,
             });

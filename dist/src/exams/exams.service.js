@@ -22,47 +22,8 @@ let ExamsService = class ExamsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async generateExam(userId, generateExamDto) {
-        try {
-            const response = await axios_1.default.post(`${this.fastApiUrl}/exams/generate`, {
-                user_id: userId,
-                subject: generateExamDto.subject,
-                exam_type: generateExamDto.examType,
-                topics: generateExamDto.topics,
-                structure: generateExamDto.structure,
-            });
-            const exam = await this.prisma.exam.create({
-                data: {
-                    userId,
-                    subject: generateExamDto.subject,
-                    class: '',
-                    section: '',
-                    examType: generateExamDto.examType,
-                    topics: generateExamDto.topics,
-                    examContent: response.data.exam_content,
-                },
-            });
-            return exam;
-        }
-        catch (error) {
-            console.error('FastAPI exam generation error:', error.message);
-            const exam = await this.prisma.exam.create({
-                data: {
-                    userId,
-                    subject: generateExamDto.subject,
-                    class: '',
-                    section: '',
-                    examType: generateExamDto.examType,
-                    topics: generateExamDto.topics,
-                    examContent: {
-                        structure: generateExamDto.structure,
-                        questions: [],
-                        error: 'AI engine unavailable',
-                    },
-                },
-            });
-            return exam;
-        }
+    async generateExam(_userId, _generateExamDto) {
+        throw new common_1.GoneException('POST /exams/generate is deprecated. Use POST /exams/generate-with-documents instead.');
     }
     async getUserExams(userId) {
         const exams = await this.prisma.exam.findMany({
@@ -112,8 +73,8 @@ let ExamsService = class ExamsService {
                 chapter_end: examData.chapterEnd,
                 include_answer_layout: examData.includeAnswerKeyLayout,
                 time_allowed: examData.timeAllowed,
-                use_past_paper_intelligence: examData.usePastPaperIntelligence || false,
-                generation_mode: examData.generationMode || 'normal',
+                use_past_paper_intelligence: examData.usePastPaperIntelligence ?? true,
+                generation_mode: examData.generationMode ?? 'smart',
             }, {
                 responseType: 'arraybuffer',
                 timeout: 120000,
@@ -143,6 +104,19 @@ let ExamsService = class ExamsService {
         }
         catch (error) {
             console.error('FastAPI exam generation error:', error.message);
+            const status = error?.response?.status;
+            const data = error?.response?.data;
+            if (status === 422 && data) {
+                let detail = 'Exam generation failed';
+                try {
+                    const text = Buffer.isBuffer(data) ? data.toString('utf8') : JSON.stringify(data);
+                    const parsed = JSON.parse(text);
+                    detail = parsed.detail || parsed.message || detail;
+                }
+                catch {
+                }
+                throw new common_1.UnprocessableEntityException(detail);
+            }
             throw error;
         }
     }
