@@ -11,24 +11,23 @@ export declare class AdminService {
         success: boolean;
         message: string;
         document: {
-            id: string;
-            board: string | null;
-            userId: string;
-            year: number | null;
-            documentType: string;
-            educationSystem: string;
+            uploadMode: string;
+            subject: string | null;
             level: string;
             class: string | null;
-            subject: string | null;
+            educationSystem: string;
+            documentType: string;
+            chapterNumber: number | null;
+            chapterName: string | null;
+            id: string;
+            year: number | null;
+            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;
             fileType: string;
             fileUrl: string;
             fileSize: number;
-            uploadMode: string;
-            chapterNumber: number | null;
-            chapterName: string | null;
             processed: boolean;
             extractionMethod: string | null;
             extractionQuality: number | null;
@@ -45,6 +44,7 @@ export declare class AdminService {
             realWorldApp: boolean;
             interactive: boolean;
             uploadDate: Date;
+            userId: string;
         };
         uploadInfo: {
             uploadMode: any;
@@ -57,17 +57,17 @@ export declare class AdminService {
     getAllUsers(role?: string, search?: string): Promise<{
         success: boolean;
         users: {
-            name: string;
             id: string;
-            email: string;
-            role: import("@prisma/client").$Enums.UserRole;
-            plan: import("@prisma/client").$Enums.PlanType;
-            isVerified: boolean;
-            createdAt: Date;
+            name: string;
             _count: {
                 documents: number;
                 exams: number;
             };
+            createdAt: Date;
+            email: string;
+            role: import("@prisma/client").$Enums.UserRole;
+            plan: import("@prisma/client").$Enums.PlanType;
+            isVerified: boolean;
         }[];
         total: number;
     }>;
@@ -75,8 +75,8 @@ export declare class AdminService {
         success: boolean;
         message: string;
         user: {
-            name: string;
             id: string;
+            name: string;
             email: string;
             role: import("@prisma/client").$Enums.UserRole;
         };
@@ -89,30 +89,29 @@ export declare class AdminService {
         success: boolean;
         documents: ({
             user: {
-                name: string;
                 id: string;
+                name: string;
                 email: string;
                 role: import("@prisma/client").$Enums.UserRole;
             };
         } & {
-            id: string;
-            board: string | null;
-            userId: string;
-            year: number | null;
-            documentType: string;
-            educationSystem: string;
+            uploadMode: string;
+            subject: string | null;
             level: string;
             class: string | null;
-            subject: string | null;
+            educationSystem: string;
+            documentType: string;
+            chapterNumber: number | null;
+            chapterName: string | null;
+            id: string;
+            year: number | null;
+            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;
             fileType: string;
             fileUrl: string;
             fileSize: number;
-            uploadMode: string;
-            chapterNumber: number | null;
-            chapterName: string | null;
             processed: boolean;
             extractionMethod: string | null;
             extractionQuality: number | null;
@@ -129,6 +128,7 @@ export declare class AdminService {
             realWorldApp: boolean;
             interactive: boolean;
             uploadDate: Date;
+            userId: string;
         })[];
         total: number;
     }>;
@@ -136,24 +136,23 @@ export declare class AdminService {
         success: boolean;
         message: string;
         document: {
-            id: string;
-            board: string | null;
-            userId: string;
-            year: number | null;
-            documentType: string;
-            educationSystem: string;
+            uploadMode: string;
+            subject: string | null;
             level: string;
             class: string | null;
-            subject: string | null;
+            educationSystem: string;
+            documentType: string;
+            chapterNumber: number | null;
+            chapterName: string | null;
+            id: string;
+            year: number | null;
+            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;
             fileType: string;
             fileUrl: string;
             fileSize: number;
-            uploadMode: string;
-            chapterNumber: number | null;
-            chapterName: string | null;
             processed: boolean;
             extractionMethod: string | null;
             extractionQuality: number | null;
@@ -170,30 +169,30 @@ export declare class AdminService {
             realWorldApp: boolean;
             interactive: boolean;
             uploadDate: Date;
+            userId: string;
         };
     }>;
     rejectContent(documentId: string): Promise<{
         success: boolean;
         message: string;
         document: {
-            id: string;
-            board: string | null;
-            userId: string;
-            year: number | null;
-            documentType: string;
-            educationSystem: string;
+            uploadMode: string;
+            subject: string | null;
             level: string;
             class: string | null;
-            subject: string | null;
+            educationSystem: string;
+            documentType: string;
+            chapterNumber: number | null;
+            chapterName: string | null;
+            id: string;
+            year: number | null;
+            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;
             fileType: string;
             fileUrl: string;
             fileSize: number;
-            uploadMode: string;
-            chapterNumber: number | null;
-            chapterName: string | null;
             processed: boolean;
             extractionMethod: string | null;
             extractionQuality: number | null;
@@ -210,6 +209,7 @@ export declare class AdminService {
             realWorldApp: boolean;
             interactive: boolean;
             uploadDate: Date;
+            userId: string;
         };
     }>;
     getSystemStats(): Promise<{
@@ -269,39 +269,38 @@ export declare class AdminService {
     }): Promise<{
         success: boolean;
         documents: ({
-            chapters: {
+            user: {
                 id: string;
-                createdAt: Date;
+                name: string;
+                email: string;
+            };
+            chapters: {
                 chapterNumber: number;
                 chapterName: string;
+                id: string;
                 documentId: string;
                 startPosition: number;
                 endPosition: number;
+                createdAt: Date;
             }[];
-            user: {
-                name: string;
-                id: string;
-                email: string;
-            };
         } & {
-            id: string;
-            board: string | null;
-            userId: string;
-            year: number | null;
-            documentType: string;
-            educationSystem: string;
+            uploadMode: string;
+            subject: string | null;
             level: string;
             class: string | null;
-            subject: string | null;
+            educationSystem: string;
+            documentType: string;
+            chapterNumber: number | null;
+            chapterName: string | null;
+            id: string;
+            year: number | null;
+            board: string | null;
             examType: string | null;
             language: string;
             fileName: string;
             fileType: string;
             fileUrl: string;
             fileSize: number;
-            uploadMode: string;
-            chapterNumber: number | null;
-            chapterName: string | null;
             processed: boolean;
             extractionMethod: string | null;
             extractionQuality: number | null;
@@ -318,6 +317,7 @@ export declare class AdminService {
             realWorldApp: boolean;
             interactive: boolean;
             uploadDate: Date;
+            userId: string;
         })[];
         total: number;
     }>;

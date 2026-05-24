@@ -15,12 +15,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ExamsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const supabase_service_1 = require("../documents/supabase.service");
 const axios_1 = __importDefault(require("axios"));
 let ExamsService = class ExamsService {
     prisma;
+    supabaseService;
     fastApiUrl = process.env.FASTAPI_URL || 'http://localhost:8000';
-    constructor(prisma) {
+    constructor(prisma, supabaseService) {
         this.prisma = prisma;
+        this.supabaseService = supabaseService;
     }
     async generateExam(_userId, _generateExamDto) {
         throw new common_1.GoneException('POST /exams/generate is deprecated. Use POST /exams/generate-with-documents instead.');
@@ -77,8 +80,20 @@ let ExamsService = class ExamsService {
                 generation_mode: examData.generationMode ?? 'smart',
             }, {
                 responseType: 'arraybuffer',
-                timeout: 120000,
+                timeout: 600000,
             });
+            const fileBuffer = Buffer.from(response.data);
+            const fallbackName = this.buildExamFileName(examData.subject, examData.class, examData.examType);
+            const fileName = this.extractFileName(response.headers['content-disposition'], fallbackName);
+            const contentType = response.headers['content-type'] ||
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+            let fileUrl = null;
+            try {
+                fileUrl = await this.supabaseService.uploadBuffer(fileBuffer, fileName, contentType, 'exams');
+            }
+            catch (uploadErr) {
+                console.warn('Exam file upload to storage failed (download still works):', uploadErr.message);
+            }
             const exam = await this.prisma.exam.create({
                 data: {
                     userId,
@@ -91,15 +106,14 @@ let ExamsService = class ExamsService {
                     patternId: examData.patternId,
                     topics: examData.topics || [],
                     examContent: {},
-                    fileUrls: [],
+                    fileUrls: fileUrl ? [fileUrl] : [],
                 },
             });
-            const fallbackName = this.buildExamFileName(examData.subject, examData.class, examData.examType);
             return {
                 examId: exam.id,
-                fileBuffer: response.data,
-                contentType: response.headers['content-type'],
-                fileName: this.extractFileName(response.headers['content-disposition'], fallbackName),
+                fileBuffer,
+                contentType,
+                fileName,
             };
         }
         catch (error) {
@@ -142,6 +156,7 @@ let ExamsService = class ExamsService {
 exports.ExamsService = ExamsService;
 exports.ExamsService = ExamsService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        supabase_service_1.SupabaseService])
 ], ExamsService);
 //# sourceMappingURL=exams.service.js.map

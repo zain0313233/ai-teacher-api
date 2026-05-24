@@ -508,122 +508,109 @@ export class DocumentsService {
 
 
 
+  private formatChaptersResponse(
+    subject: string,
+    chapters: Array<{ number: number; name: string }>,
+  ) {
+    return {
+      subject,
+      totalChapters: chapters.length,
+      chapters,
+      documentsFound: chapters.length > 0,
+    };
+  }
+
+  private normalizeChapterEntry(raw: Record<string, unknown>): { number: number; name: string } | null {
+    const number = raw.number ?? raw.chapterNumber ?? raw.chapter_number;
+    const name = raw.name ?? raw.chapterName ?? raw.chapter_name;
+    if (number == null || name == null || String(name).trim() === '') {
+      return null;
+    }
+    const chapterNumber = typeof number === 'number' ? number : parseInt(String(number), 10);
+    if (Number.isNaN(chapterNumber)) {
+      return null;
+    }
+    return { number: chapterNumber, name: String(name).trim() };
+  }
+
+  private mergeChapters(
+    ...groups: Array<Array<{ number: number; name: string }>>
+  ): Array<{ number: number; name: string }> {
+    const byNumber = new Map<number, { number: number; name: string }>();
+    for (const group of groups) {
+      for (const ch of group) {
+        byNumber.set(ch.number, ch);
+      }
+    }
+    return Array.from(byNumber.values()).sort((a, b) => a.number - b.number);
+  }
+
+  private collectChaptersFromDocuments(
+    documents: Array<{
+      chapterNumber: number | null;
+      chapterName: string | null;
+      chapters: Array<{ chapterNumber: number; chapterName: string }>;
+    }>,
+  ): Array<{ number: number; name: string }> {
+    const collected: Array<{ number: number; name: string }> = [];
+
+    for (const doc of documents) {
+      for (const ch of doc.chapters) {
+        collected.push({ number: ch.chapterNumber, name: ch.chapterName });
+      }
+      if (doc.chapterNumber != null && doc.chapterName?.trim()) {
+        collected.push({ number: doc.chapterNumber, name: doc.chapterName.trim() });
+      }
+    }
+
+    return this.mergeChapters(collected);
+  }
+
   async getChaptersBySubject(userId: string, subject: string) {
+    const trimmedSubject = subject.trim();
+    if (!trimmedSubject) {
+      return this.formatChaptersResponse(subject, []);
+    }
 
-    // Get documents from:
-
-    // 1. User's own documents
-
-    // 2. Official documents (uploaded by admin with isOfficial: true)
-
+  // Get documents from:
+  // 1. User's own documents
+  // 2. Official documents (uploaded by admin with isOfficial: true)
     const documents = await this.prisma.document.findMany({
-
       where: {
-
-        OR: [
-
-          { userId }, // User's own documents
-
-          { isOfficial: true }, // Official documents (admin uploads)
-
+        AND: [
+          {
+            OR: [{ userId }, { isOfficial: true }],
+          },
+          {
+            subject: { equals: trimmedSubject, mode: 'insensitive' },
+          },
+          { processed: true },
         ],
-
-        subject,
-
-        processed: true,
-
       },
-
       include: {
-
         chapters: {
-
           orderBy: { chapterNumber: 'asc' },
-
         },
-
       },
-
     });
 
+    const dbChapters = this.collectChaptersFromDocuments(documents);
 
-
-    // If we have chapters in database, return them
-
-    const allChapters = documents.flatMap(doc => doc.chapters);
-
-    
-
-    if (allChapters.length > 0) {
-
-      // Remove duplicates by chapter number
-
-      const uniqueChapters = Array.from(
-
-        new Map(allChapters.map(ch => [ch.chapterNumber, ch])).values()
-
-      );
-
-      
-
-      return {
-
-        subject,
-
-        totalChapters: uniqueChapters.length,
-
-        chapters: uniqueChapters.map(ch => ({
-
-          number: ch.chapterNumber,
-
-          name: ch.chapterName,
-
-        })),
-
-        documentsFound: true,
-
-      };
-
-    }
-
-
-
-    // Fallback: Query FastAPI/Pinecone
-
+    let pineconeChapters: Array<{ number: number; name: string }> = [];
     try {
-
-      const response = await axios.get(
-
-        `${this.fastApiUrl}/documents/chapters`,
-
-        {
-
-          params: { user_id: userId, subject },
-
-        }
-
-      );
-
-      
-
-      return response.data;
-
-    } catch (error) {
-
-      return {
-
-        subject,
-
-        totalChapters: 0,
-
-        chapters: [],
-
-        documentsFound: false,
-
-      };
-
+      const response = await axios.get(`${this.fastApiUrl}/documents/chapters`, {
+        params: { user_id: userId, subject: trimmedSubject },
+      });
+      const rawChapters = Array.isArray(response.data?.chapters) ? response.data.chapters : [];
+      pineconeChapters = rawChapters
+        .map((ch: Record<string, unknown>) => this.normalizeChapterEntry(ch))
+        .filter(Boolean) as Array<{ number: number; name: string }>;
+    } catch {
+      /* Pinecone optional when DB has chapters */
     }
 
+    const merged = this.mergeChapters(dbChapters, pineconeChapters);
+    return this.formatChaptersResponse(trimmedSubject, merged);
   }
 
 }

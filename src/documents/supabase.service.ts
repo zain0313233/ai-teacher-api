@@ -18,17 +18,28 @@ export class SupabaseService {
   }
 
   async uploadFile(file: Express.Multer.File): Promise<string> {
-    try {
-      // Generate unique filename
-      const timestamp = Date.now();
-      const filename = `${timestamp}-${file.originalname}`;
-      const filePath = `uploads/${filename}`;
+    return this.uploadBuffer(
+      file.buffer,
+      file.originalname,
+      file.mimetype || 'application/octet-stream',
+    );
+  }
 
-      // Upload to Supabase Storage
-      const { data, error } = await this.supabase.storage
+  async uploadBuffer(
+    buffer: Buffer,
+    originalName: string,
+    contentType: string,
+    folder = 'uploads',
+  ): Promise<string> {
+    try {
+      const timestamp = Date.now();
+      const safeName = originalName.replace(/[^\w.\-]+/g, '_');
+      const filePath = `${folder}/${timestamp}-${safeName}`;
+
+      const { error } = await this.supabase.storage
         .from(this.bucketName)
-        .upload(filePath, file.buffer, {
-          contentType: file.mimetype,
+        .upload(filePath, buffer, {
+          contentType,
           upsert: false,
         });
 
@@ -37,7 +48,6 @@ export class SupabaseService {
         throw error;
       }
 
-      // Get public URL
       const { data: urlData } = this.supabase.storage
         .from(this.bucketName)
         .getPublicUrl(filePath);

@@ -34,7 +34,8 @@ let ExamsController = class ExamsController {
             const result = await this.examsService.generateExamWithDocuments(req.user.id, examData);
             res.setHeader('Content-Type', result.contentType);
             res.setHeader('Content-Disposition', `attachment; filename="${result.fileName}"`);
-            res.send(Buffer.from(result.fileBuffer));
+            res.setHeader('X-Exam-Id', result.examId);
+            res.send(result.fileBuffer);
         }
         catch (error) {
             const status = typeof error.getStatus === 'function' ? error.getStatus() : 500;

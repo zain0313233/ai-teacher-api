@@ -88,7 +88,9 @@ export declare class PatternsService {
         avgMarks: number;
         avgDuration: string;
     }>;
-    createPatternWithAI(userId: string, userPrompt: string): Promise<any>;
+    previewPatternWithAI(userId: string, userPrompt: string): Promise<any>;
+    createPatternWithAI(userId: string, userPrompt: string, save?: boolean): Promise<any>;
+    private generatePatternData;
     private lookupVerifiedTemplate;
     private hardValidatePattern;
     private saveDraftTemplate;
@@ -110,9 +112,9 @@ export declare class PatternsService {
         duration: number;
         sections: import("@prisma/client/runtime/client").JsonValue;
         lastUsed: Date | null;
+        source: string;
         country: string;
         classLevel: string;
-        source: string;
         confidence: number;
         usageCount: number;
         notes: string | null;
@@ -132,9 +134,9 @@ export declare class PatternsService {
         duration: number;
         sections: import("@prisma/client/runtime/client").JsonValue;
         lastUsed: Date | null;
+        source: string;
         country: string;
         classLevel: string;
-        source: string;
         confidence: number;
         usageCount: number;
         notes: string | null;

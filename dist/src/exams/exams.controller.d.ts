@@ -13,36 +13,36 @@ export declare class ExamsController {
         success: boolean;
         exams: {
             id: string;
-            createdAt: Date;
             userId: string;
-            class: string;
             subject: string;
-            examType: string;
-            topics: string[];
+            class: string;
             section: string;
+            examType: string;
             chapterStart: number | null;
             chapterEnd: number | null;
             patternId: string | null;
+            topics: string[];
             examContent: import("@prisma/client/runtime/client").JsonValue;
             fileUrls: string[];
+            createdAt: Date;
         }[];
     }>;
     getExam(req: any, id: string): Promise<{
         success: boolean;
         exam: {
             id: string;
-            createdAt: Date;
             userId: string;
-            class: string;
             subject: string;
-            examType: string;
-            topics: string[];
+            class: string;
             section: string;
+            examType: string;
             chapterStart: number | null;
             chapterEnd: number | null;
             patternId: string | null;
+            topics: string[];
             examContent: import("@prisma/client/runtime/client").JsonValue;
             fileUrls: string[];
+            createdAt: Date;
         };
     }>;
     deleteExam(req: any, id: string): Promise<{

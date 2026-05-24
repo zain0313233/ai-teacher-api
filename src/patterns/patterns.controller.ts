@@ -74,11 +74,24 @@ export class PatternsController {
     return { message: 'Pattern marked as used' };
   }
 
+  @Post('preview-with-ai')
+  async previewPatternWithAI(@Request() req, @Body() body: { prompt: string }) {
+    const result = await this.patternsService.previewPatternWithAI(
+      req.user.id,
+      body.prompt,
+    );
+    return result;
+  }
+
   @Post('create-with-ai')
-  async createPatternWithAI(@Request() req, @Body() body: { prompt: string }) {
+  async createPatternWithAI(
+    @Request() req,
+    @Body() body: { prompt: string; save?: boolean },
+  ) {
     const result = await this.patternsService.createPatternWithAI(
       req.user.id,
       body.prompt,
+      body.save !== false,
     );
     return result;
   }

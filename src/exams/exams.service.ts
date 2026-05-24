@@ -5,6 +5,7 @@ import {
   GoneException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { SupabaseService } from '../documents/supabase.service';
 import { GenerateExamDto } from './dto/generate-exam.dto';
 import axios from 'axios';
 
@@ -12,7 +13,10 @@ import axios from 'axios';
 export class ExamsService {
   private readonly fastApiUrl = process.env.FASTAPI_URL || 'http://localhost:8000';
   
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private supabaseService: SupabaseService,
+  ) {}
 
   async generateExam(_userId: string, _generateExamDto: GenerateExamDto) {
     throw new GoneException(
@@ -85,9 +89,28 @@ export class ExamsService {
         },
         {
           responseType: 'arraybuffer',
-          timeout: 120000, // 2 minutes
+          timeout: 600000, // 10 minutes — full exam generation can exceed 2 min
         }
       );
+
+      const fileBuffer = Buffer.from(response.data);
+      const fallbackName = this.buildExamFileName(examData.subject, examData.class, examData.examType);
+      const fileName = this.extractFileName(response.headers['content-disposition'], fallbackName);
+      const contentType =
+        response.headers['content-type'] ||
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+      let fileUrl: string | null = null;
+      try {
+        fileUrl = await this.supabaseService.uploadBuffer(
+          fileBuffer,
+          fileName,
+          contentType,
+          'exams',
+        );
+      } catch (uploadErr: any) {
+        console.warn('Exam file upload to storage failed (download still works):', uploadErr.message);
+      }
 
       // Save exam record to database
       const exam = await this.prisma.exam.create({
@@ -102,19 +125,16 @@ export class ExamsService {
           patternId: examData.patternId,
           topics: examData.topics || [],
           examContent: {},
-          fileUrls: [], // Will be updated after Cloudinary upload
+          fileUrls: fileUrl ? [fileUrl] : [],
         },
       });
-
-      // Build a descriptive fallback filename from exam data
-      const fallbackName = this.buildExamFileName(examData.subject, examData.class, examData.examType);
 
       // Return the file buffer and exam ID
       return {
         examId: exam.id,
-        fileBuffer: response.data,
-        contentType: response.headers['content-type'],
-        fileName: this.extractFileName(response.headers['content-disposition'], fallbackName),
+        fileBuffer,
+        contentType,
+        fileName,
       };
     } catch (error: any) {
       console.error('FastAPI exam generation error:', error.message);

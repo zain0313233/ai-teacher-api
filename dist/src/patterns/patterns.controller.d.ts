@@ -64,8 +64,12 @@ export declare class PatternsController {
     markPatternAsUsed(req: any, id: string): Promise<{
         message: string;
     }>;
+    previewPatternWithAI(req: any, body: {
+        prompt: string;
+    }): Promise<any>;
     createPatternWithAI(req: any, body: {
         prompt: string;
+        save?: boolean;
     }): Promise<any>;
     listTemplates(board?: string, subject?: string, verified?: string): Promise<{
         name: string;
@@ -80,9 +84,9 @@ export declare class PatternsController {
         duration: number;
         sections: import("@prisma/client/runtime/client").JsonValue;
         lastUsed: Date | null;
+        source: string;
         country: string;
         classLevel: string;
-        source: string;
         confidence: number;
         usageCount: number;
         notes: string | null;
@@ -102,9 +106,9 @@ export declare class PatternsController {
         duration: number;
         sections: import("@prisma/client/runtime/client").JsonValue;
         lastUsed: Date | null;
+        source: string;
         country: string;
         classLevel: string;
-        source: string;
         confidence: number;
         usageCount: number;
         notes: string | null;

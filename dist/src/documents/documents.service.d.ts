@@ -141,5 +141,17 @@ export declare class DocumentsService {
         };
     }>;
     private storeChapters;
-    getChaptersBySubject(userId: string, subject: string): Promise<any>;
+    private formatChaptersResponse;
+    private normalizeChapterEntry;
+    private mergeChapters;
+    private collectChaptersFromDocuments;
+    getChaptersBySubject(userId: string, subject: string): Promise<{
+        subject: string;
+        totalChapters: number;
+        chapters: {
+            number: number;
+            name: string;
+        }[];
+        documentsFound: boolean;
+    }>;
 }

@@ -51,8 +51,12 @@ let PatternsController = class PatternsController {
         await this.patternsService.markAsUsed(id, req.user.id);
         return { message: 'Pattern marked as used' };
     }
+    async previewPatternWithAI(req, body) {
+        const result = await this.patternsService.previewPatternWithAI(req.user.id, body.prompt);
+        return result;
+    }
     async createPatternWithAI(req, body) {
-        const result = await this.patternsService.createPatternWithAI(req.user.id, body.prompt);
+        const result = await this.patternsService.createPatternWithAI(req.user.id, body.prompt, body.save !== false);
         return result;
     }
     async listTemplates(board, subject, verified) {
@@ -122,6 +126,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], PatternsController.prototype, "markPatternAsUsed", null);
+__decorate([
+    (0, common_1.Post)('preview-with-ai'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], PatternsController.prototype, "previewPatternWithAI", null);
 __decorate([
     (0, common_1.Post)('create-with-ai'),
     __param(0, (0, common_1.Request)()),

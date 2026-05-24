@@ -214,15 +214,63 @@ let DocumentsService = class DocumentsService {
             });
         }
     }
+    formatChaptersResponse(subject, chapters) {
+        return {
+            subject,
+            totalChapters: chapters.length,
+            chapters,
+            documentsFound: chapters.length > 0,
+        };
+    }
+    normalizeChapterEntry(raw) {
+        const number = raw.number ?? raw.chapterNumber ?? raw.chapter_number;
+        const name = raw.name ?? raw.chapterName ?? raw.chapter_name;
+        if (number == null || name == null || String(name).trim() === '') {
+            return null;
+        }
+        const chapterNumber = typeof number === 'number' ? number : parseInt(String(number), 10);
+        if (Number.isNaN(chapterNumber)) {
+            return null;
+        }
+        return { number: chapterNumber, name: String(name).trim() };
+    }
+    mergeChapters(...groups) {
+        const byNumber = new Map();
+        for (const group of groups) {
+            for (const ch of group) {
+                byNumber.set(ch.number, ch);
+            }
+        }
+        return Array.from(byNumber.values()).sort((a, b) => a.number - b.number);
+    }
+    collectChaptersFromDocuments(documents) {
+        const collected = [];
+        for (const doc of documents) {
+            for (const ch of doc.chapters) {
+                collected.push({ number: ch.chapterNumber, name: ch.chapterName });
+            }
+            if (doc.chapterNumber != null && doc.chapterName?.trim()) {
+                collected.push({ number: doc.chapterNumber, name: doc.chapterName.trim() });
+            }
+        }
+        return this.mergeChapters(collected);
+    }
     async getChaptersBySubject(userId, subject) {
+        const trimmedSubject = subject.trim();
+        if (!trimmedSubject) {
+            return this.formatChaptersResponse(subject, []);
+        }
         const documents = await this.prisma.document.findMany({
             where: {
-                OR: [
-                    { userId },
-                    { isOfficial: true },
+                AND: [
+                    {
+                        OR: [{ userId }, { isOfficial: true }],
+                    },
+                    {
+                        subject: { equals: trimmedSubject, mode: 'insensitive' },
+                    },
+                    { processed: true },
                 ],
-                subject,
-                processed: true,
             },
             include: {
                 chapters: {
@@ -230,33 +278,21 @@ let DocumentsService = class DocumentsService {
                 },
             },
         });
-        const allChapters = documents.flatMap(doc => doc.chapters);
-        if (allChapters.length > 0) {
-            const uniqueChapters = Array.from(new Map(allChapters.map(ch => [ch.chapterNumber, ch])).values());
-            return {
-                subject,
-                totalChapters: uniqueChapters.length,
-                chapters: uniqueChapters.map(ch => ({
-                    number: ch.chapterNumber,
-                    name: ch.chapterName,
-                })),
-                documentsFound: true,
-            };
-        }
+        const dbChapters = this.collectChaptersFromDocuments(documents);
+        let pineconeChapters = [];
         try {
             const response = await axios_1.default.get(`${this.fastApiUrl}/documents/chapters`, {
-                params: { user_id: userId, subject },
+                params: { user_id: userId, subject: trimmedSubject },
             });
-            return response.data;
+            const rawChapters = Array.isArray(response.data?.chapters) ? response.data.chapters : [];
+            pineconeChapters = rawChapters
+                .map((ch) => this.normalizeChapterEntry(ch))
+                .filter(Boolean);
         }
-        catch (error) {
-            return {
-                subject,
-                totalChapters: 0,
-                chapters: [],
-                documentsFound: false,
-            };
+        catch {
         }
+        const merged = this.mergeChapters(dbChapters, pineconeChapters);
+        return this.formatChaptersResponse(trimmedSubject, merged);
     }
 };
 exports.DocumentsService = DocumentsService;
