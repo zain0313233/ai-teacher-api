@@ -19,6 +19,8 @@ export class PatternsInternalController {
     @Query('userId') userId: string,
     @Query('subject') subject: string,
     @Query('patternId') patternId?: string,
+    @Query('board') board?: string,
+    @Query('classLevel') classLevel?: string,
   ) {
     if (!userId || !subject) {
       throw new NotFoundException('userId and subject are required');
@@ -27,6 +29,8 @@ export class PatternsInternalController {
       userId,
       subject,
       patternId,
+      board,
+      classLevel,
     );
     if (!pattern) {
       throw new NotFoundException('No pattern found for user/subject');

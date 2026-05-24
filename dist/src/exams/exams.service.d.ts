@@ -9,33 +9,33 @@ export declare class ExamsService {
     generateExam(_userId: string, _generateExamDto: GenerateExamDto): Promise<void>;
     getUserExams(userId: string): Promise<{
         id: string;
+        createdAt: Date;
         userId: string;
-        subject: string;
         class: string;
-        section: string;
+        subject: string;
         examType: string;
+        topics: string[];
+        section: string;
         chapterStart: number | null;
         chapterEnd: number | null;
         patternId: string | null;
-        topics: string[];
         examContent: import("@prisma/client/runtime/client").JsonValue;
         fileUrls: string[];
-        createdAt: Date;
     }[]>;
     getExamById(examId: string, userId: string): Promise<{
         id: string;
+        createdAt: Date;
         userId: string;
-        subject: string;
         class: string;
-        section: string;
+        subject: string;
         examType: string;
+        topics: string[];
+        section: string;
         chapterStart: number | null;
         chapterEnd: number | null;
         patternId: string | null;
-        topics: string[];
         examContent: import("@prisma/client/runtime/client").JsonValue;
         fileUrls: string[];
-        createdAt: Date;
     }>;
     deleteExam(examId: string, userId: string): Promise<{
         message: string;
@@ -47,5 +47,21 @@ export declare class ExamsService {
         fileName: string;
     }>;
     private extractFileName;
+    persistChatGeneratedExam(userId: string, meta: {
+        subject: string;
+        class: string;
+        section?: string;
+        examType: string;
+        chapterStart?: number | null;
+        chapterEnd?: number | null;
+        patternId?: string | null;
+        topics?: string[];
+    }, file: {
+        filename: string;
+        dataBase64: string;
+    }): Promise<{
+        examId: string;
+        fileUrl: string | null;
+    }>;
     private buildExamFileName;
 }

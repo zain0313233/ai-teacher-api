@@ -21,11 +21,11 @@ let PatternsInternalController = class PatternsInternalController {
     constructor(patternsService) {
         this.patternsService = patternsService;
     }
-    async resolveForGeneration(userId, subject, patternId) {
+    async resolveForGeneration(userId, subject, patternId, board, classLevel) {
         if (!userId || !subject) {
             throw new common_1.NotFoundException('userId and subject are required');
         }
-        const pattern = await this.patternsService.resolvePatternForGeneration(userId, subject, patternId);
+        const pattern = await this.patternsService.resolvePatternForGeneration(userId, subject, patternId, board, classLevel);
         if (!pattern) {
             throw new common_1.NotFoundException('No pattern found for user/subject');
         }
@@ -38,8 +38,10 @@ __decorate([
     __param(0, (0, common_1.Query)('userId')),
     __param(1, (0, common_1.Query)('subject')),
     __param(2, (0, common_1.Query)('patternId')),
+    __param(3, (0, common_1.Query)('board')),
+    __param(4, (0, common_1.Query)('classLevel')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], PatternsInternalController.prototype, "resolveForGeneration", null);
 exports.PatternsInternalController = PatternsInternalController = __decorate([

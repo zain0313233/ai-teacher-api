@@ -95,11 +95,26 @@ export class PatternsService {
     return pattern;
   }
 
+  /** Normalize teacher profile board string for PECTA / templates. */
+  normalizeBoardForPecta(board?: string | null): string | null {
+    if (!board?.trim()) return 'BISE Punjab';
+    const b = board.trim().toLowerCase();
+    if (b.includes('punjab') || b.includes('bise') || b.includes('lahore')) {
+      return 'BISE Punjab';
+    }
+    if (b.includes('federal')) return 'Federal Board';
+    if (b.includes('sindh')) return 'Sindh Board';
+    if (b.includes('kpk') || b.includes('khyber')) return 'KPK Board';
+    return board.trim();
+  }
+
   /** Pick saved pattern for chat/document generation (AI engine internal API). */
   async resolvePatternForGeneration(
     userId: string,
     subject: string,
     patternId?: string,
+    board?: string | null,
+    classLevel?: string | null,
   ) {
     if (patternId) {
       const pattern = await this.getPatternById(patternId, userId);
@@ -111,18 +126,43 @@ export class PatternsService {
       orderBy: [{ lastUsed: 'desc' }, { updatedAt: 'desc' }],
     });
 
-    if (!patterns.length) {
-      return null;
+    const norm = subject.trim().toLowerCase();
+    if (patterns.length) {
+      const match =
+        patterns.find((p) => p.subject.trim().toLowerCase() === norm) ||
+        patterns.find((p) => p.subject.trim().toLowerCase().includes(norm)) ||
+        patterns.find((p) => norm.includes(p.subject.trim().toLowerCase())) ||
+        patterns[0];
+
+      if (match) {
+        return this.toGenerationPayload(match);
+      }
     }
 
-    const norm = subject.trim().toLowerCase();
-    const match =
-      patterns.find((p) => p.subject.trim().toLowerCase() === norm) ||
-      patterns.find((p) => p.subject.trim().toLowerCase().includes(norm)) ||
-      patterns.find((p) => norm.includes(p.subject.trim().toLowerCase())) ||
-      patterns[0];
+    const cls = classLevel ? String(classLevel).replace(/\D/g, '') : null;
+    const normBoard = this.normalizeBoardForPecta(board);
+    const syllabusVariant =
+      cls && ['9', '10'].includes(cls) ? ('pecta' as const) : ('legacy' as const);
 
-    return match ? this.toGenerationPayload(match) : null;
+    const builtInPecta = buildPectaTemplateIfApplicable(
+      normBoard,
+      'Pakistan',
+      subject,
+      cls,
+      syllabusVariant,
+    );
+    if (builtInPecta) {
+      return {
+        name: builtInPecta.name,
+        subject: builtInPecta.subject,
+        totalMarks: builtInPecta.totalMarks,
+        duration: builtInPecta.duration,
+        sections: builtInPecta.sections,
+        instructions: 'Read all questions carefully. Answer all questions.',
+      };
+    }
+
+    return null;
   }
 
   private toGenerationPayload(pattern: {

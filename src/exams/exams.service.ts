@@ -161,6 +161,57 @@ export class ExamsService {
     return match ? match[1] : fallback;
   }
 
+  /** Persist exam produced by AI Exam Assistant (base64 file from chat). */
+  async persistChatGeneratedExam(
+    userId: string,
+    meta: {
+      subject: string;
+      class: string;
+      section?: string;
+      examType: string;
+      chapterStart?: number | null;
+      chapterEnd?: number | null;
+      patternId?: string | null;
+      topics?: string[];
+    },
+    file: { filename: string; dataBase64: string },
+  ): Promise<{ examId: string; fileUrl: string | null }> {
+    const buffer = Buffer.from(file.dataBase64, 'base64');
+    const fileName = file.filename || this.buildExamFileName(meta.subject, meta.class, meta.examType);
+    const contentType =
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+    let fileUrl: string | null = null;
+    try {
+      fileUrl = await this.supabaseService.uploadBuffer(
+        buffer,
+        fileName,
+        contentType,
+        'exams',
+      );
+    } catch (uploadErr: any) {
+      console.warn('Chat exam upload failed:', uploadErr.message);
+    }
+
+    const exam = await this.prisma.exam.create({
+      data: {
+        userId,
+        subject: meta.subject,
+        class: meta.class,
+        section: meta.section || 'A',
+        examType: meta.examType,
+        chapterStart: meta.chapterStart ?? null,
+        chapterEnd: meta.chapterEnd ?? null,
+        patternId: meta.patternId ?? null,
+        topics: meta.topics || [],
+        examContent: {},
+        fileUrls: fileUrl ? [fileUrl] : [],
+      },
+    });
+
+    return { examId: exam.id, fileUrl };
+  }
+
   private buildExamFileName(subject: string, className: string, examType: string): string {
     const safeSubject = (subject || 'Exam').replace(/\s+/g, '_');
     const safeClass = className ? `_Class${className}` : '';

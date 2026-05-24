@@ -63,7 +63,22 @@ let PatternsService = class PatternsService {
         }
         return pattern;
     }
-    async resolvePatternForGeneration(userId, subject, patternId) {
+    normalizeBoardForPecta(board) {
+        if (!board?.trim())
+            return 'BISE Punjab';
+        const b = board.trim().toLowerCase();
+        if (b.includes('punjab') || b.includes('bise') || b.includes('lahore')) {
+            return 'BISE Punjab';
+        }
+        if (b.includes('federal'))
+            return 'Federal Board';
+        if (b.includes('sindh'))
+            return 'Sindh Board';
+        if (b.includes('kpk') || b.includes('khyber'))
+            return 'KPK Board';
+        return board.trim();
+    }
+    async resolvePatternForGeneration(userId, subject, patternId, board, classLevel) {
         if (patternId) {
             const pattern = await this.getPatternById(patternId, userId);
             return this.toGenerationPayload(pattern);
@@ -72,15 +87,31 @@ let PatternsService = class PatternsService {
             where: { userId },
             orderBy: [{ lastUsed: 'desc' }, { updatedAt: 'desc' }],
         });
-        if (!patterns.length) {
-            return null;
-        }
         const norm = subject.trim().toLowerCase();
-        const match = patterns.find((p) => p.subject.trim().toLowerCase() === norm) ||
-            patterns.find((p) => p.subject.trim().toLowerCase().includes(norm)) ||
-            patterns.find((p) => norm.includes(p.subject.trim().toLowerCase())) ||
-            patterns[0];
-        return match ? this.toGenerationPayload(match) : null;
+        if (patterns.length) {
+            const match = patterns.find((p) => p.subject.trim().toLowerCase() === norm) ||
+                patterns.find((p) => p.subject.trim().toLowerCase().includes(norm)) ||
+                patterns.find((p) => norm.includes(p.subject.trim().toLowerCase())) ||
+                patterns[0];
+            if (match) {
+                return this.toGenerationPayload(match);
+            }
+        }
+        const cls = classLevel ? String(classLevel).replace(/\D/g, '') : null;
+        const normBoard = this.normalizeBoardForPecta(board);
+        const syllabusVariant = cls && ['9', '10'].includes(cls) ? 'pecta' : 'legacy';
+        const builtInPecta = (0, pecta_templates_1.buildPectaTemplateIfApplicable)(normBoard, 'Pakistan', subject, cls, syllabusVariant);
+        if (builtInPecta) {
+            return {
+                name: builtInPecta.name,
+                subject: builtInPecta.subject,
+                totalMarks: builtInPecta.totalMarks,
+                duration: builtInPecta.duration,
+                sections: builtInPecta.sections,
+                instructions: 'Read all questions carefully. Answer all questions.',
+            };
+        }
+        return null;
     }
     toGenerationPayload(pattern) {
         return {

@@ -57,7 +57,8 @@ export declare class PatternsService {
         sections: import("@prisma/client/runtime/client").JsonValue;
         lastUsed: Date | null;
     }>;
-    resolvePatternForGeneration(userId: string, subject: string, patternId?: string): Promise<{
+    normalizeBoardForPecta(board?: string | null): string | null;
+    resolvePatternForGeneration(userId: string, subject: string, patternId?: string, board?: string | null, classLevel?: string | null): Promise<{
         name: string;
         subject: string;
         totalMarks: number;
