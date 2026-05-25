@@ -58,6 +58,7 @@ export declare class AuthController {
             schoolName: string | null;
             city: string | null;
             userId: string;
+            learningLevel: number;
             onboardingDone: boolean;
         } | {
             id: string;

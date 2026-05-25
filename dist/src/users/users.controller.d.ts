@@ -43,6 +43,7 @@ export declare class UsersController {
             schoolName: string | null;
             city: string | null;
             userId: string;
+            learningLevel: number;
             onboardingDone: boolean;
         } | null;
         teacherProfile: {
@@ -85,6 +86,7 @@ export declare class UsersController {
             schoolName: string | null;
             city: string | null;
             userId: string;
+            learningLevel: number;
             onboardingDone: boolean;
         } | null;
         teacherProfile: {

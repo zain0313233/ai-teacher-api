@@ -41,6 +41,7 @@ model User {
   passwordResets PasswordReset[]
   studentProfile StudentProfile?
   teacherProfile TeacherProfile?
+  chatSessions   ChatSession[]
 
   @@map("users")
 }
@@ -411,6 +412,7 @@ model StudentProfile {
   semester        String?             // 1–8
   subjects        String[]
   targetExam      String?             // mdcat | ecat | css | nts | none
+  learningLevel   Int      @default(3) // 1-5 adaptive scale (1-2=struggling, 3=average, 4-5=quick learner)
   schoolName      String?
   city            String?
   onboardingDone  Boolean  @default(false)
@@ -462,4 +464,36 @@ model BoardConfig {
   
   @@unique([board, country, educationLevel])
   @@map("board_configs")
+}
+
+// ── Ustaad AI Chat Persistence ──────────────────────────────────────────────
+
+model ChatSession {
+  id        String        @id @default(uuid())
+  userId    String
+  title     String        @default("New Chat")
+  subject   String?
+  context   Json?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  ChatMessage[]
+
+  @@index([userId, updatedAt(sort: Desc)])
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id        String      @id @default(uuid())
+  sessionId String
+  role      String      // 'user' | 'assistant'
+  content   String
+  metadata  Json?
+  createdAt DateTime    @default(now())
+
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("chat_messages")
 }

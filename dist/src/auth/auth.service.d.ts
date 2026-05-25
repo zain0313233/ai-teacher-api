@@ -50,6 +50,7 @@ export declare class AuthService {
             schoolName: string | null;
             city: string | null;
             userId: string;
+            learningLevel: number;
             onboardingDone: boolean;
         } | {
             id: string;

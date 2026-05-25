@@ -11,6 +11,7 @@ import { PatternsModule } from './patterns/patterns.module';
 import { PastPapersModule } from './past-papers/past-papers.module';
 import { ExamAssistantModule } from './exam-assistant/exam-assistant.module';
 import { AdminModule } from './admin/admin.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { AdminModule } from './admin/admin.module';
     PastPapersModule,
     ExamAssistantModule,
     AdminModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -28,6 +28,7 @@ export declare class UsersService {
             schoolName: string | null;
             city: string | null;
             userId: string;
+            learningLevel: number;
             onboardingDone: boolean;
         } | null;
         teacherProfile: {
@@ -69,6 +70,7 @@ export declare class UsersService {
             schoolName: string | null;
             city: string | null;
             userId: string;
+            learningLevel: number;
             onboardingDone: boolean;
         } | null;
         teacherProfile: {

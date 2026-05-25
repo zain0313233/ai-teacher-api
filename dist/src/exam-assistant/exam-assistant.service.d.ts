@@ -7,6 +7,7 @@ export interface StudentContext {
     board?: string;
     subjects?: string[];
     target_exam?: string;
+    learning_level?: number;
 }
 export interface ChatContext {
     subject?: string;
