@@ -10,11 +10,14 @@ exports.ExamAssistantModule = void 0;
 const common_1 = require("@nestjs/common");
 const exam_assistant_controller_1 = require("./exam-assistant.controller");
 const exam_assistant_service_1 = require("./exam-assistant.service");
+const prisma_module_1 = require("../prisma/prisma.module");
+const exams_module_1 = require("../exams/exams.module");
 let ExamAssistantModule = class ExamAssistantModule {
 };
 exports.ExamAssistantModule = ExamAssistantModule;
 exports.ExamAssistantModule = ExamAssistantModule = __decorate([
     (0, common_1.Module)({
+        imports: [prisma_module_1.PrismaModule, exams_module_1.ExamsModule],
         controllers: [exam_assistant_controller_1.ExamAssistantController],
         providers: [exam_assistant_service_1.ExamAssistantService],
         exports: [exam_assistant_service_1.ExamAssistantService],

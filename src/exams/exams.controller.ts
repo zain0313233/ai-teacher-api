@@ -36,9 +36,11 @@ export class ExamsController {
       // Set headers and send file
       res.setHeader('Content-Type', result.contentType);
       res.setHeader('Content-Disposition', `attachment; filename="${result.fileName}"`);
-      res.send(Buffer.from(result.fileBuffer));
+      res.setHeader('X-Exam-Id', result.examId);
+      res.send(result.fileBuffer);
     } catch (error) {
-      res.status(500).json({
+      const status = typeof error.getStatus === 'function' ? error.getStatus() : 500;
+      res.status(status).json({
         success: false,
         message: error.message,
       });

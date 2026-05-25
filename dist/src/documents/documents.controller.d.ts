@@ -40,7 +40,15 @@ export declare class DocumentsController {
         interactive: boolean;
         uploadDate: Date;
     }>;
-    getChapters(req: any, subject: string): Promise<any>;
+    getChapters(req: any, subject: string): Promise<{
+        subject: string;
+        totalChapters: number;
+        chapters: {
+            number: number;
+            name: string;
+        }[];
+        documentsFound: boolean;
+    }>;
     getUserDocuments(req: any): Promise<{
         id: string;
         board: string | null;
@@ -118,6 +126,15 @@ export declare class DocumentsController {
         fileName: string;
         processed: boolean;
         status: string;
+    }>;
+    reprocessDocument(req: any, id: string): Promise<{
+        success: boolean;
+        message: string;
+        document: {
+            id: string;
+            fileName: string;
+            processed: boolean;
+        };
     }>;
     deleteDocument(req: any, id: string): Promise<{
         message: string;

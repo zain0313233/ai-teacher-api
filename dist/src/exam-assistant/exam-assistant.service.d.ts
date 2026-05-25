@@ -1,20 +1,30 @@
+import { ExamsService } from '../exams/exams.service';
 export interface StudentContext {
     education_level?: string;
     class_grade?: string;
+    classes_taught?: string[];
     group?: string;
     board?: string;
     subjects?: string[];
     target_exam?: string;
 }
+export interface ChatContext {
+    subject?: string;
+    class?: string;
+    examType?: string;
+    exam_type?: string;
+    patternId?: string;
+    section?: string;
+    chapterStart?: number | null;
+    chapterEnd?: number | null;
+    topics?: string[];
+    board?: string;
+    confirmed?: boolean;
+}
 export interface ChatRequest {
     userId: string;
     message: string;
-    context?: {
-        subject?: string;
-        class?: string;
-        examType?: string;
-        year?: number;
-    };
+    context?: ChatContext;
     studentContext?: StudentContext | null;
 }
 export interface ChatResponse {
@@ -24,6 +34,8 @@ export interface ChatResponse {
         total_results?: number;
         query?: string;
         exam_preview?: any;
+        exam_id?: string;
+        file_urls?: string[];
         files?: Array<{
             filename: string;
             data: string;
@@ -38,7 +50,17 @@ export interface ChatResponse {
     suggestions?: string[];
 }
 export declare class ExamAssistantService {
+    private readonly examsService;
     private readonly fastApiUrl;
+    constructor(examsService: ExamsService);
+    private normalizeContext;
+    private persistAssistantExamIfNeeded;
+    prepareExamGeneration(chatRequest: {
+        userId: string;
+        message: string;
+        context?: ChatContext;
+        studentContext?: StudentContext | null;
+    }): Promise<any>;
     chat(chatRequest: ChatRequest): Promise<ChatResponse>;
     getConversationHistory(userId: string): Promise<any>;
     clearConversationHistory(userId: string): Promise<any>;

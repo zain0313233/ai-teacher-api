@@ -1,10 +1,12 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseService } from '../documents/supabase.service';
+import { DocumentsService } from '../documents/documents.service';
 export declare class AdminService {
     private prisma;
     private supabaseService;
+    private documentsService;
     private readonly fastApiUrl;
-    constructor(prisma: PrismaService, supabaseService: SupabaseService);
+    constructor(prisma: PrismaService, supabaseService: SupabaseService, documentsService: DocumentsService);
     uploadOfficialContent(file: Express.Multer.File, metadata: any, adminId: string): Promise<{
         success: boolean;
         message: string;
@@ -55,9 +57,9 @@ export declare class AdminService {
     getAllUsers(role?: string, search?: string): Promise<{
         success: boolean;
         users: {
+            name: string;
             id: string;
             email: string;
-            name: string;
             role: import("@prisma/client").$Enums.UserRole;
             plan: import("@prisma/client").$Enums.PlanType;
             isVerified: boolean;
@@ -73,9 +75,9 @@ export declare class AdminService {
         success: boolean;
         message: string;
         user: {
+            name: string;
             id: string;
             email: string;
-            name: string;
             role: import("@prisma/client").$Enums.UserRole;
         };
     }>;
@@ -87,9 +89,9 @@ export declare class AdminService {
         success: boolean;
         documents: ({
             user: {
+                name: string;
                 id: string;
                 email: string;
-                name: string;
                 role: import("@prisma/client").$Enums.UserRole;
             };
         } & {
@@ -267,11 +269,6 @@ export declare class AdminService {
     }): Promise<{
         success: boolean;
         documents: ({
-            user: {
-                id: string;
-                email: string;
-                name: string;
-            };
             chapters: {
                 id: string;
                 createdAt: Date;
@@ -281,6 +278,11 @@ export declare class AdminService {
                 startPosition: number;
                 endPosition: number;
             }[];
+            user: {
+                name: string;
+                id: string;
+                email: string;
+            };
         } & {
             id: string;
             board: string | null;
@@ -318,6 +320,15 @@ export declare class AdminService {
             uploadDate: Date;
         })[];
         total: number;
+    }>;
+    reprocessOfficialContent(documentId: string): Promise<{
+        success: boolean;
+        message: string;
+        document: {
+            id: string;
+            fileName: string;
+            processed: boolean;
+        };
     }>;
     deleteOfficialContent(documentId: string): Promise<{
         success: boolean;

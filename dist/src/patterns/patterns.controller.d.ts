@@ -5,8 +5,8 @@ export declare class PatternsController {
     private readonly patternsService;
     constructor(patternsService: PatternsService);
     createPattern(req: any, createPatternDto: CreatePatternDto): Promise<{
-        id: string;
         name: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         userId: string;
@@ -17,8 +17,8 @@ export declare class PatternsController {
         lastUsed: Date | null;
     }>;
     getUserPatterns(req: any): Promise<{
-        id: string;
         name: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         userId: string;
@@ -35,8 +35,8 @@ export declare class PatternsController {
         avgDuration: string;
     }>;
     getPattern(req: any, id: string): Promise<{
-        id: string;
         name: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         userId: string;
@@ -47,8 +47,8 @@ export declare class PatternsController {
         lastUsed: Date | null;
     }>;
     updatePattern(req: any, id: string, updatePatternDto: UpdatePatternDto): Promise<{
-        id: string;
         name: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         userId: string;
@@ -64,12 +64,16 @@ export declare class PatternsController {
     markPatternAsUsed(req: any, id: string): Promise<{
         message: string;
     }>;
-    createPatternWithAI(req: any, body: {
+    previewPatternWithAI(req: any, body: {
         prompt: string;
     }): Promise<any>;
+    createPatternWithAI(req: any, body: {
+        prompt: string;
+        save?: boolean;
+    }): Promise<any>;
     listTemplates(board?: string, subject?: string, verified?: string): Promise<{
-        id: string;
         name: string;
+        id: string;
         isVerified: boolean;
         createdAt: Date;
         updatedAt: Date;
@@ -80,9 +84,9 @@ export declare class PatternsController {
         duration: number;
         sections: import("@prisma/client/runtime/client").JsonValue;
         lastUsed: Date | null;
+        source: string;
         country: string;
         classLevel: string;
-        source: string;
         confidence: number;
         usageCount: number;
         notes: string | null;
@@ -90,8 +94,8 @@ export declare class PatternsController {
         verifiedBy: string | null;
     }[]>;
     getTemplate(id: string): Promise<{
-        id: string;
         name: string;
+        id: string;
         isVerified: boolean;
         createdAt: Date;
         updatedAt: Date;
@@ -102,9 +106,9 @@ export declare class PatternsController {
         duration: number;
         sections: import("@prisma/client/runtime/client").JsonValue;
         lastUsed: Date | null;
+        source: string;
         country: string;
         classLevel: string;
-        source: string;
         confidence: number;
         usageCount: number;
         notes: string | null;

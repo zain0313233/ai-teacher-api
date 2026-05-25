@@ -24,14 +24,17 @@ let SupabaseService = class SupabaseService {
         this.supabase = (0, supabase_js_1.createClient)(supabaseUrl, supabaseKey);
     }
     async uploadFile(file) {
+        return this.uploadBuffer(file.buffer, file.originalname, file.mimetype || 'application/octet-stream');
+    }
+    async uploadBuffer(buffer, originalName, contentType, folder = 'uploads') {
         try {
             const timestamp = Date.now();
-            const filename = `${timestamp}-${file.originalname}`;
-            const filePath = `uploads/${filename}`;
-            const { data, error } = await this.supabase.storage
+            const safeName = originalName.replace(/[^\w.\-]+/g, '_');
+            const filePath = `${folder}/${timestamp}-${safeName}`;
+            const { error } = await this.supabase.storage
                 .from(this.bucketName)
-                .upload(filePath, file.buffer, {
-                contentType: file.mimetype,
+                .upload(filePath, buffer, {
+                contentType,
                 upsert: false,
             });
             if (error) {

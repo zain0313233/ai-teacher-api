@@ -6,21 +6,7 @@ export declare class ExamsController {
     constructor(examsService: ExamsService);
     generateExam(req: any, generateExamDto: GenerateExamDto): Promise<{
         success: boolean;
-        exam: {
-            id: string;
-            createdAt: Date;
-            userId: string;
-            class: string;
-            subject: string;
-            examType: string;
-            topics: string[];
-            section: string;
-            chapterStart: number | null;
-            chapterEnd: number | null;
-            examContent: import("@prisma/client/runtime/client").JsonValue;
-            fileUrls: string[];
-            patternId: string | null;
-        };
+        exam: void;
     }>;
     generateExamWithDocuments(req: any, examData: any, res: Response): Promise<void>;
     getUserExams(req: any): Promise<{
@@ -36,9 +22,9 @@ export declare class ExamsController {
             section: string;
             chapterStart: number | null;
             chapterEnd: number | null;
+            patternId: string | null;
             examContent: import("@prisma/client/runtime/client").JsonValue;
             fileUrls: string[];
-            patternId: string | null;
         }[];
     }>;
     getExam(req: any, id: string): Promise<{
@@ -54,9 +40,9 @@ export declare class ExamsController {
             section: string;
             chapterStart: number | null;
             chapterEnd: number | null;
+            patternId: string | null;
             examContent: import("@prisma/client/runtime/client").JsonValue;
             fileUrls: string[];
-            patternId: string | null;
         };
     }>;
     deleteExam(req: any, id: string): Promise<{

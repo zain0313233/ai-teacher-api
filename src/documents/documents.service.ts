@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -366,19 +366,7 @@ export class DocumentsService {
 
 
 
-    // Delete from Pinecone first
-
-    try {
-
-      await axios.delete(`${this.fastApiUrl}/documents/${documentId}`);
-
-    } catch (error) {
-
-      console.error('FastAPI deletion error:', error.message);
-
-    }
-
-
+    await this.deletePineconeVectors(documentId);
 
     // Delete from database
 
@@ -408,7 +396,87 @@ export class DocumentsService {
 
   }
 
+  /** Remove all Pinecone vectors for a document (used before reprocess or delete). */
+  async deletePineconeVectors(documentId: string): Promise<void> {
+    try {
+      await axios.delete(`${this.fastApiUrl}/documents/${documentId}`);
+    } catch (error) {
+      console.error('Pinecone deletion error:', error.message);
+    }
+  }
 
+  /**
+   * Re-run AI processing from the existing Supabase file (no re-upload).
+   * Clears old vectors, then chunks + embeds again with current metadata (e.g. class_level).
+   */
+  async reprocessDocument(
+    documentId: string,
+    options?: { userId?: string; asAdmin?: boolean },
+  ) {
+    const where: { id: string; userId?: string; isOfficial?: boolean } = {
+      id: documentId,
+    };
+    if (options?.asAdmin) {
+      where.isOfficial = true;
+    } else if (options?.userId) {
+      where.userId = options.userId;
+    } else {
+      throw new BadRequestException('userId or asAdmin is required');
+    }
+
+    const document = await this.prisma.document.findFirst({ where });
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+    if (!document.fileUrl?.trim()) {
+      throw new BadRequestException('Document has no file URL — re-upload the PDF instead');
+    }
+
+    await this.deletePineconeVectors(documentId);
+
+    await this.prisma.document.update({
+      where: { id: documentId },
+      data: { processed: false },
+    });
+
+    const uploadMode =
+      document.uploadMode === 'chapter' ? 'chapter' : document.uploadMode || 'fullbook';
+    const chapterMetadata =
+      document.chapterNumber != null && document.chapterName
+        ? {
+            chapterNumber: document.chapterNumber,
+            chapterName: document.chapterName,
+          }
+        : undefined;
+
+    this.processDocumentAsync(
+      document.id,
+      document.fileUrl,
+      document.fileType,
+      document.userId,
+      {
+        subject: document.subject ?? undefined,
+        level: document.level ?? undefined,
+        class: document.class ?? undefined,
+        educationSystem: document.educationSystem ?? undefined,
+        documentType: document.documentType ?? undefined,
+        isOfficial: document.isOfficial,
+        chapterMetadata,
+      },
+      uploadMode,
+    );
+
+    return {
+      success: true,
+      message:
+        'Reprocessing started. The file in storage will be re-indexed (watch AI engine logs).',
+      document: {
+        id: document.id,
+        fileName: document.fileName,
+        processed: false,
+      },
+    };
+  }
 
   private async storeChapters(documentId: string, chapters: any[]) {
 
@@ -440,122 +508,109 @@ export class DocumentsService {
 
 
 
+  private formatChaptersResponse(
+    subject: string,
+    chapters: Array<{ number: number; name: string }>,
+  ) {
+    return {
+      subject,
+      totalChapters: chapters.length,
+      chapters,
+      documentsFound: chapters.length > 0,
+    };
+  }
+
+  private normalizeChapterEntry(raw: Record<string, unknown>): { number: number; name: string } | null {
+    const number = raw.number ?? raw.chapterNumber ?? raw.chapter_number;
+    const name = raw.name ?? raw.chapterName ?? raw.chapter_name;
+    if (number == null || name == null || String(name).trim() === '') {
+      return null;
+    }
+    const chapterNumber = typeof number === 'number' ? number : parseInt(String(number), 10);
+    if (Number.isNaN(chapterNumber)) {
+      return null;
+    }
+    return { number: chapterNumber, name: String(name).trim() };
+  }
+
+  private mergeChapters(
+    ...groups: Array<Array<{ number: number; name: string }>>
+  ): Array<{ number: number; name: string }> {
+    const byNumber = new Map<number, { number: number; name: string }>();
+    for (const group of groups) {
+      for (const ch of group) {
+        byNumber.set(ch.number, ch);
+      }
+    }
+    return Array.from(byNumber.values()).sort((a, b) => a.number - b.number);
+  }
+
+  private collectChaptersFromDocuments(
+    documents: Array<{
+      chapterNumber: number | null;
+      chapterName: string | null;
+      chapters: Array<{ chapterNumber: number; chapterName: string }>;
+    }>,
+  ): Array<{ number: number; name: string }> {
+    const collected: Array<{ number: number; name: string }> = [];
+
+    for (const doc of documents) {
+      for (const ch of doc.chapters) {
+        collected.push({ number: ch.chapterNumber, name: ch.chapterName });
+      }
+      if (doc.chapterNumber != null && doc.chapterName?.trim()) {
+        collected.push({ number: doc.chapterNumber, name: doc.chapterName.trim() });
+      }
+    }
+
+    return this.mergeChapters(collected);
+  }
+
   async getChaptersBySubject(userId: string, subject: string) {
+    const trimmedSubject = subject.trim();
+    if (!trimmedSubject) {
+      return this.formatChaptersResponse(subject, []);
+    }
 
-    // Get documents from:
-
-    // 1. User's own documents
-
-    // 2. Official documents (uploaded by admin with isOfficial: true)
-
+  // Get documents from:
+  // 1. User's own documents
+  // 2. Official documents (uploaded by admin with isOfficial: true)
     const documents = await this.prisma.document.findMany({
-
       where: {
-
-        OR: [
-
-          { userId }, // User's own documents
-
-          { isOfficial: true }, // Official documents (admin uploads)
-
+        AND: [
+          {
+            OR: [{ userId }, { isOfficial: true }],
+          },
+          {
+            subject: { equals: trimmedSubject, mode: 'insensitive' },
+          },
+          { processed: true },
         ],
-
-        subject,
-
-        processed: true,
-
       },
-
       include: {
-
         chapters: {
-
           orderBy: { chapterNumber: 'asc' },
-
         },
-
       },
-
     });
 
+    const dbChapters = this.collectChaptersFromDocuments(documents);
 
-
-    // If we have chapters in database, return them
-
-    const allChapters = documents.flatMap(doc => doc.chapters);
-
-    
-
-    if (allChapters.length > 0) {
-
-      // Remove duplicates by chapter number
-
-      const uniqueChapters = Array.from(
-
-        new Map(allChapters.map(ch => [ch.chapterNumber, ch])).values()
-
-      );
-
-      
-
-      return {
-
-        subject,
-
-        totalChapters: uniqueChapters.length,
-
-        chapters: uniqueChapters.map(ch => ({
-
-          number: ch.chapterNumber,
-
-          name: ch.chapterName,
-
-        })),
-
-        documentsFound: true,
-
-      };
-
-    }
-
-
-
-    // Fallback: Query FastAPI/Pinecone
-
+    let pineconeChapters: Array<{ number: number; name: string }> = [];
     try {
-
-      const response = await axios.get(
-
-        `${this.fastApiUrl}/documents/chapters`,
-
-        {
-
-          params: { user_id: userId, subject },
-
-        }
-
-      );
-
-      
-
-      return response.data;
-
-    } catch (error) {
-
-      return {
-
-        subject,
-
-        totalChapters: 0,
-
-        chapters: [],
-
-        documentsFound: false,
-
-      };
-
+      const response = await axios.get(`${this.fastApiUrl}/documents/chapters`, {
+        params: { user_id: userId, subject: trimmedSubject },
+      });
+      const rawChapters = Array.isArray(response.data?.chapters) ? response.data.chapters : [];
+      pineconeChapters = rawChapters
+        .map((ch: Record<string, unknown>) => this.normalizeChapterEntry(ch))
+        .filter(Boolean) as Array<{ number: number; name: string }>;
+    } catch {
+      /* Pinecone optional when DB has chapters */
     }
 
+    const merged = this.mergeChapters(dbChapters, pineconeChapters);
+    return this.formatChaptersResponse(trimmedSubject, merged);
   }
 
 }

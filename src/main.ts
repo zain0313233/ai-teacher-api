@@ -12,7 +12,9 @@ async function bootstrap() {
   app.use(require('express').json({ limit: '100mb' }));
   app.use(require('express').urlencoded({ limit: '100mb', extended: true }));
   
-  app.enableCors();
+  app.enableCors({
+    exposedHeaders: ['Content-Disposition', 'X-Exam-Id'],
+  });
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
     new ValidationPipe({
@@ -26,4 +28,6 @@ async function bootstrap() {
   await app.listen(port);
   console.log(`🚀 Server running on http://localhost:${port}`);
 }
-bootstrap();
+
+// Expose download headers to browser clients
+bootstrap().catch(console.error);

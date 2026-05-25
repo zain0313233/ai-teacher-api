@@ -94,6 +94,9 @@ let DocumentsController = class DocumentsController {
             status: document.processed ? 'complete' : 'processing',
         };
     }
+    async reprocessDocument(req, id) {
+        return this.documentsService.reprocessDocument(id, { userId: req.user.id });
+    }
     async deleteDocument(req, id) {
         const result = await this.documentsService.deleteDocument(id, req.user.id);
         return result;
@@ -145,6 +148,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], DocumentsController.prototype, "getDocumentStatus", null);
+__decorate([
+    (0, common_1.Post)(':id/reprocess'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], DocumentsController.prototype, "reprocessDocument", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     __param(0, (0, common_1.Request)()),

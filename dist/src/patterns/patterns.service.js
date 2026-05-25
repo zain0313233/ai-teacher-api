@@ -14,6 +14,7 @@ const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const groq_sdk_1 = require("groq-sdk");
 const core_1 = require("@tavily/core");
+const pecta_templates_1 = require("./pecta-templates");
 let PatternsService = class PatternsService {
     prisma;
     groqClient;
@@ -61,6 +62,66 @@ let PatternsService = class PatternsService {
             throw new common_1.NotFoundException('Pattern not found');
         }
         return pattern;
+    }
+    normalizeBoardForPecta(board) {
+        if (!board?.trim())
+            return 'BISE Punjab';
+        const b = board.trim().toLowerCase();
+        if (b.includes('punjab') || b.includes('bise') || b.includes('lahore')) {
+            return 'BISE Punjab';
+        }
+        if (b.includes('federal'))
+            return 'Federal Board';
+        if (b.includes('sindh'))
+            return 'Sindh Board';
+        if (b.includes('kpk') || b.includes('khyber'))
+            return 'KPK Board';
+        return board.trim();
+    }
+    async resolvePatternForGeneration(userId, subject, patternId, board, classLevel) {
+        if (patternId) {
+            const pattern = await this.getPatternById(patternId, userId);
+            return this.toGenerationPayload(pattern);
+        }
+        const patterns = await this.prisma.pattern.findMany({
+            where: { userId },
+            orderBy: [{ lastUsed: 'desc' }, { updatedAt: 'desc' }],
+        });
+        const norm = subject.trim().toLowerCase();
+        if (patterns.length) {
+            const match = patterns.find((p) => p.subject.trim().toLowerCase() === norm) ||
+                patterns.find((p) => p.subject.trim().toLowerCase().includes(norm)) ||
+                patterns.find((p) => norm.includes(p.subject.trim().toLowerCase())) ||
+                patterns[0];
+            if (match) {
+                return this.toGenerationPayload(match);
+            }
+        }
+        const cls = classLevel ? String(classLevel).replace(/\D/g, '') : null;
+        const normBoard = this.normalizeBoardForPecta(board);
+        const syllabusVariant = cls && ['9', '10'].includes(cls) ? 'pecta' : 'legacy';
+        const builtInPecta = (0, pecta_templates_1.buildPectaTemplateIfApplicable)(normBoard, 'Pakistan', subject, cls, syllabusVariant);
+        if (builtInPecta) {
+            return {
+                name: builtInPecta.name,
+                subject: builtInPecta.subject,
+                totalMarks: builtInPecta.totalMarks,
+                duration: builtInPecta.duration,
+                sections: builtInPecta.sections,
+                instructions: 'Read all questions carefully. Answer all questions.',
+            };
+        }
+        return null;
+    }
+    toGenerationPayload(pattern) {
+        return {
+            name: pattern.name,
+            subject: pattern.subject,
+            totalMarks: pattern.totalMarks,
+            duration: pattern.duration,
+            sections: pattern.sections,
+            instructions: 'Read all questions carefully. Answer all questions.',
+        };
     }
     async updatePattern(patternId, userId, updatePatternDto) {
         const pattern = await this.prisma.pattern.findFirst({
@@ -131,62 +192,22 @@ let PatternsService = class PatternsService {
             avgDuration: `${avgDuration}h`,
         };
     }
-    async createPatternWithAI(userId, userPrompt) {
+    async previewPatternWithAI(userId, userPrompt) {
+        return this.createPatternWithAI(userId, userPrompt, false);
+    }
+    async createPatternWithAI(userId, userPrompt, save = true) {
         try {
             console.log('=== AI Pattern Creation Started (3-Layer Resolver) ===');
             console.log('User Prompt:', userPrompt);
-            const context = await this.detectContext(userPrompt);
-            console.log('Detected Context:', context);
-            let patternData = null;
-            let source = 'llm_draft';
-            const dbTemplate = await this.lookupVerifiedTemplate(context);
-            if (dbTemplate) {
-                console.log('✅ LAYER 1 HIT: Using verified DB template');
-                patternData = {
-                    name: dbTemplate.name,
-                    subject: dbTemplate.subject,
-                    totalMarks: dbTemplate.totalMarks,
-                    duration: dbTemplate.duration,
-                    sections: dbTemplate.sections,
+            const { patternData, source } = await this.generatePatternData(userPrompt);
+            if (!save) {
+                return {
+                    success: true,
+                    pattern: patternData,
+                    source,
+                    preview: true,
+                    message: 'Pattern preview ready — review sections before saving',
                 };
-                source = 'verified_db';
-                this.prisma.patternTemplate.update({
-                    where: { id: dbTemplate.id },
-                    data: { usageCount: { increment: 1 }, lastUsed: new Date() },
-                }).catch(() => { });
-            }
-            else {
-                console.log('⚠️ LAYER 1 MISS: No verified template found');
-                if (context.board) {
-                    console.log('🔍 LAYER 2: Web search + constrained AI parse');
-                    try {
-                        const searchResults = await this.searchWebForPattern(context);
-                        patternData = await this.parseSearchResults(context, searchResults);
-                        source = 'web_search';
-                    }
-                    catch (searchError) {
-                        console.warn('⚠️ LAYER 2 FAILED:', searchError);
-                        patternData = null;
-                    }
-                }
-                if (!patternData) {
-                    console.log('🤖 LAYER 3: Constrained LLM generation');
-                    patternData = await this.generateCustomPattern(userPrompt, context);
-                    source = 'llm_draft';
-                }
-                patternData = await this.hardValidatePattern(context, patternData);
-            }
-            if (!patternData || !patternData.name || !patternData.subject || !patternData.sections || patternData.sections.length === 0) {
-                throw new Error('Invalid pattern data generated');
-            }
-            patternData = this.recalculateMarks(patternData);
-            if (!patternData.duration || patternData.duration <= 0) {
-                const classNum = parseInt(context.class || '10');
-                patternData.duration = classNum >= 11 ? 200 : 160;
-                console.log(`🔧 Auto-set duration to ${patternData.duration} minutes`);
-            }
-            if (source !== 'verified_db' && context.board && context.subject && context.class) {
-                this.saveDraftTemplate(context, patternData, source).catch(err => console.warn('⚠️ Failed to save draft template:', err.message));
             }
             const pattern = await this.prisma.pattern.create({
                 data: {
@@ -212,9 +233,109 @@ let PatternsService = class PatternsService {
             throw error;
         }
     }
-    async lookupVerifiedTemplate(context) {
+    async generatePatternData(userPrompt) {
+        const syllabusVariant = (0, pecta_templates_1.detectSyllabusVariant)(userPrompt);
+        const context = await this.detectContext(userPrompt);
+        context.syllabusVariant = syllabusVariant;
+        console.log('Detected Context:', context);
+        let patternData = null;
+        let source = 'llm_draft';
+        const builtInPecta = (0, pecta_templates_1.buildPectaTemplateIfApplicable)(context.board, context.country, context.subject, context.class, syllabusVariant);
+        if (builtInPecta) {
+            console.log('✅ PECTA built-in template applied');
+            patternData = builtInPecta;
+            source = 'verified_db';
+        }
+        if (!patternData) {
+            const dbTemplate = await this.lookupVerifiedTemplate(context, userPrompt);
+            if (dbTemplate) {
+                console.log('✅ LAYER 1 HIT: Using verified DB template');
+                patternData = {
+                    name: dbTemplate.name,
+                    subject: dbTemplate.subject,
+                    totalMarks: dbTemplate.totalMarks,
+                    duration: dbTemplate.duration,
+                    sections: dbTemplate.sections,
+                };
+                source = 'verified_db';
+                this.prisma.patternTemplate
+                    .update({
+                    where: { id: dbTemplate.id },
+                    data: { usageCount: { increment: 1 }, lastUsed: new Date() },
+                })
+                    .catch(() => { });
+            }
+        }
+        if (!patternData) {
+            console.log('⚠️ LAYER 1 MISS: No verified template found');
+            if (context.board) {
+                console.log('🔍 LAYER 2: Web search + constrained AI parse');
+                try {
+                    const searchResults = await this.searchWebForPattern(context, userPrompt);
+                    patternData = await this.parseSearchResults(context, searchResults, userPrompt);
+                    source = 'web_search';
+                }
+                catch (searchError) {
+                    console.warn('⚠️ LAYER 2 FAILED:', searchError);
+                    patternData = null;
+                }
+            }
+            if (!patternData) {
+                console.log('🤖 LAYER 3: Constrained LLM generation (full user prompt)');
+                patternData = await this.generateCustomPattern(userPrompt, context);
+                source = 'llm_draft';
+            }
+            patternData = await this.hardValidatePattern(context, patternData);
+        }
+        if (!patternData ||
+            !patternData.name ||
+            !patternData.subject ||
+            !patternData.sections ||
+            patternData.sections.length === 0) {
+            throw new Error('Invalid pattern data generated');
+        }
+        patternData = this.recalculateMarks(patternData);
+        if (!patternData.duration || patternData.duration <= 0) {
+            if (context.syllabusVariant === 'pecta' && (0, pecta_templates_1.isPectaScienceSubject)(context.subject)) {
+                patternData.duration = 120;
+            }
+            else {
+                const classNum = parseInt(context.class || '10');
+                patternData.duration = classNum >= 11 ? 200 : 160;
+            }
+            console.log(`🔧 Auto-set duration to ${patternData.duration} minutes`);
+        }
+        if (source !== 'verified_db' && context.board && context.subject && context.class) {
+            this.saveDraftTemplate(context, patternData, source).catch((err) => console.warn('⚠️ Failed to save draft template:', err.message));
+        }
+        return { patternData, source };
+    }
+    async lookupVerifiedTemplate(context, userPrompt) {
         if (!context.board || !context.subject || !context.class)
             return null;
+        const variant = context.syllabusVariant ||
+            (userPrompt ? (0, pecta_templates_1.detectSyllabusVariant)(userPrompt) : 'legacy');
+        if (variant === 'pecta' && (0, pecta_templates_1.isPectaScienceSubject)(context.subject)) {
+            const pectaTemplate = await this.prisma.patternTemplate.findFirst({
+                where: {
+                    board: context.board,
+                    subject: context.subject,
+                    classLevel: context.class,
+                    isVerified: true,
+                    OR: [
+                        { totalMarks: 60 },
+                        { name: { contains: 'PECTA', mode: 'insensitive' } },
+                    ],
+                },
+                orderBy: { confidence: 'desc' },
+            });
+            if (pectaTemplate) {
+                console.log(`📋 Found PECTA verified template: "${pectaTemplate.name}"`);
+                return pectaTemplate;
+            }
+            console.log('⚠️ No PECTA DB template — skipping legacy 75-mark lookup');
+            return null;
+        }
         const template = await this.prisma.patternTemplate.findFirst({
             where: {
                 board: context.board,
@@ -445,7 +566,11 @@ Examples:
                 throw new Error('No response from AI during context detection');
             }
             const cleanDetection = detectionResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-            return JSON.parse(cleanDetection);
+            const parsed = JSON.parse(cleanDetection);
+            return {
+                ...parsed,
+                syllabusVariant: (0, pecta_templates_1.detectSyllabusVariant)(userPrompt),
+            };
         }
         catch (error) {
             console.error('Context detection failed:', error);
@@ -456,16 +581,20 @@ Examples:
                 class: null,
                 year: '2026',
                 needsWebSearch: false,
+                syllabusVariant: (0, pecta_templates_1.detectSyllabusVariant)(userPrompt),
             };
         }
     }
-    async searchWebForPattern(context) {
+    async searchWebForPattern(context, userPrompt) {
         let searchQuery;
         const classNum = parseInt(context.class || '10');
+        const pectaHint = context.syllabusVariant === 'pecta' || (userPrompt && (0, pecta_templates_1.detectSyllabusVariant)(userPrompt) === 'pecta')
+            ? ' PECTA smart syllabus 60 marks 12 MCQs Q2 Q3 Q4 short questions attempt 5 long questions 9 marks 2025 2026'
+            : '';
         if (context.board === 'BISE Punjab' && context.country === 'Pakistan') {
             const level = classNum >= 11 ? 'HSSC FSc Inter' : 'SSC Matric';
             const part = (classNum === 9 || classNum === 11) ? 'Part 1' : 'Part 2';
-            searchQuery = `BISE Lahore Pakistan ${level} ${part} ${context.subject} Class ${context.class || '10'} paper pattern ${context.year} marks distribution scheme sections structure`;
+            searchQuery = `BISE Lahore Pakistan ${level} ${part} ${context.subject} Class ${context.class || '10'} paper pattern ${context.year} marks distribution scheme sections structure${pectaHint}`;
         }
         else if (context.board === 'Federal Board' && context.country === 'Pakistan') {
             const level = classNum >= 11 ? 'HSSC' : 'SSC';
@@ -519,7 +648,7 @@ Examples:
             return '';
         }
     }
-    async parseSearchResults(context, searchResults) {
+    async parseSearchResults(context, searchResults, userPrompt) {
         const classNum = parseInt(context.class || '10');
         const isPakistani = context.country === 'Pakistan';
         const isCambridge = context.board?.includes('Cambridge') || false;
@@ -534,12 +663,30 @@ Examples:
             boardKnowledge = `\nCAMBRIDGE ${context.board} PAPER STRUCTURE:\n- Papers have multiple components (Paper 1, Paper 2, etc.)\n- Paper 1: Usually MCQ (40 marks, 1 hour)\n- Paper 2: Usually structured/short answer questions\n- Paper 3: Usually practical/coursework\n- Total marks vary by subject (typically 100-200 across papers)\n- Each paper has its own time allocation\n\nCRITICAL: Cambridge papers are VERY different from Pakistani board papers.\nCreate separate sections for each paper component.`;
         }
         else if (isPakistani) {
-            const levelInfo = classNum >= 11
-                ? 'HSSC/FSc (Class 11-12): 100 marks for English/Urdu/Math, 85 marks for Science subjects. Time: ~3h 20min total.'
-                : 'SSC/Matric (Class 9-10): 75 marks total. Time: ~2h 40min total.';
+            const isPectaScience = context.syllabusVariant === 'pecta' &&
+                classNum <= 10 &&
+                (0, pecta_templates_1.isPectaScienceSubject)(context.subject);
+            const levelInfo = isPectaScience
+                ? 'SSC/Matric PECTA Smart Syllabus (2025–2026): 60 marks total, ~2 hours (120 min). Objective ~15 min on separate sheet.'
+                : classNum >= 11
+                    ? 'HSSC/FSc (Class 11-12): 100 marks for English/Urdu/Math, 85 marks for Science subjects. Time: ~3h 20min total.'
+                    : 'SSC/Matric (Class 9-10) LEGACY (pre-PECTA): 75 marks total. Time: ~2h 40min total.';
             const boardName = context.board || 'Pakistani Board';
-            boardKnowledge = `\n${boardName} PAKISTAN ${levelInfo}\nNOTE: Pakistani boards (BISE Punjab, Federal Board, Sindh, KPK) follow similar structures with minor variations.\n`;
-            if (isEnglish) {
+            boardKnowledge = `\n${boardName} PAKISTAN ${levelInfo}\nNOTE: Pakistani boards follow similar structures with minor variations.\n`;
+            if (isPectaScience) {
+                boardKnowledge += `
+SUBJECT-SPECIFIC: PECTA SMART SYLLABUS SCIENCE (${context.subject}) — 60 MARKS
+Use EXACTLY these sections (5 sections, total 60 marks):
+1. Section A - MCQs: 12 questions, attempt ALL 12, 1 mark each = 12 marks
+2. Q.2 Short Questions: 8 parts from Chapters 1-3, attempt ANY 5 parts, 2 marks each = 10 marks
+3. Q.3 Short Questions: 8 parts from Chapters 4-6, attempt ANY 5 parts, 2 marks each = 10 marks
+4. Q.4 Short Questions: 8 parts from Chapters 7-9, attempt ANY 5 parts, 2 marks each = 10 marks
+5. Section C Long Questions: 3 long questions (Q.5, Q.6, Q.7), attempt ANY 2, 9 marks each = 18 marks
+
+CRITICAL: Create SEPARATE sections for Q.2, Q.3, and Q.4 — do NOT merge into one "Short Questions" section.
+CRITICAL: totalMarks MUST be 60, duration ~120 minutes. NOT 75 marks.`;
+            }
+            else if (isEnglish) {
                 boardKnowledge += `
 SUBJECT-SPECIFIC: ENGLISH PAPER STRUCTURE
 ⚠️ English papers are COMPLETELY DIFFERENT from Science/Math papers.
@@ -612,7 +759,13 @@ Country: ${context.country}
 Subject: ${context.subject}
 Class: ${context.class || '10'}
 Year: ${context.year}
+Syllabus: ${context.syllabusVariant === 'pecta' ? 'PECTA Smart Syllabus (60 marks for Class 9-10 Science)' : 'Standard/Legacy'}
 ${boardKnowledge}
+
+USER REQUEST (follow this when it specifies structure or marks):
+"""
+${userPrompt || 'Not provided'}
+"""
 
 IMPORTANT CONTEXT:
 - If board is "BISE Punjab" → this is PAKISTAN Punjab Board, NOT Indian PSEB
@@ -735,12 +888,13 @@ ${subjectGuide}
 BOARD-SPECIFIC KNOWLEDGE:
 
 PAKISTANI BOARDS (BISE Punjab, Federal Board, Sindh Board, KPK Board):
-- SSC (Class 9-10): 75 marks, 2h 40min
-- HSSC/FSc (Class 11-12): 85 marks (Science), 100 marks (English/Urdu/Math), 3h 20min
-- Different subjects have VERY different paper structures!
-  * English/Urdu: Many small specific sections (prose, poetry, essay, letter, translation, etc.)
-  * Science: MCQs + Short questions + Long questions with part (a) and (b) + Numericals
-  * Math: MCQs + Short questions + Long questions (proofs and calculations)
+- PECTA Smart Syllabus (2025–2026) Class 9–10 SCIENCE (Physics/Chemistry/Biology): 60 marks, 120 min
+  * Section A: 12 MCQs × 1 = 12 marks (all compulsory)
+  * Q.2, Q.3, Q.4: EACH is a separate section — 8 parts, attempt ANY 5, 2 marks each = 10 marks per question
+  * Section C Long: 3 questions, attempt ANY 2, 9 marks each = 18 marks
+  * Total: 12+10+10+10+18 = 60 marks — NOT 75 marks
+- SSC LEGACY (pre-PECTA) Math/CS: 75 marks, 160 min
+- HSSC/FSc (Class 11-12): 85–100 marks, 200 min
 
 CAMBRIDGE (O Level / A Level / IGCSE):
 - Multiple paper components (Paper 1, Paper 2, Paper 3)
@@ -770,11 +924,12 @@ Return ONLY valid JSON:
 }
 
 RULES:
-- Parse the user's requirements exactly
+- Parse the user's requirements exactly — if they pasted a full pattern, follow it section-by-section
+- For PECTA Punjab science: use 5 sections (MCQ + Q.2 + Q.3 + Q.4 + Long), totalMarks=60, duration=120
 - totalMarks = sum(questionsToAttempt × marksPerQuestion)
-- If user mentions a specific board, use that board's standard pattern
+- NEVER use 75 marks or 15 MCQs for PECTA science unless user explicitly asks for legacy pattern
 - NEVER add 'numerical problems' or 'calculations' to English/Urdu papers
-- Create SEPARATE sections for each distinct question type
+- Create SEPARATE sections for each distinct question type (Q.2, Q.3, Q.4 must be separate)
 - NO markdown, ONLY JSON.`;
         try {
             const generation = await this.groqClient.chat.completions.create({
