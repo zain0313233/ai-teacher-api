@@ -19,6 +19,7 @@ exports.PastPapersModule = PastPapersModule = __decorate([
         imports: [prisma_module_1.PrismaModule],
         providers: [past_papers_service_1.PastPapersService],
         controllers: [past_papers_controller_1.PastPapersController],
+        exports: [past_papers_service_1.PastPapersService],
     })
 ], PastPapersModule);
 //# sourceMappingURL=past-papers.module.js.map

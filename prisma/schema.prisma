@@ -29,6 +29,9 @@ model User {
   role          UserRole       @default(USER)
   plan          PlanType       @default(FREE)
   isVerified    Boolean        @default(false)
+  emailNotifyAssignments  Boolean @default(true)
+  emailNotifyDueReminders Boolean @default(true)
+  inAppNotifications      Boolean @default(true)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   
@@ -42,6 +45,14 @@ model User {
   studentProfile StudentProfile?
   teacherProfile TeacherProfile?
   chatSessions   ChatSession[]
+  quizSessions   QuizSession[]
+  quizAttempts   QuizAttempt[]
+  notifications  Notification[]
+  classroomsTaught   Classroom[]       @relation("TeacherClassrooms")
+  classEnrollments   ClassEnrollment[] @relation("StudentEnrollments")
+  classMaterialsShared ClassMaterial[]
+  classAssignmentsCreated ClassAssignment[]
+  classMessagesSent     ClassMessage[]
 
   @@map("users")
 }
@@ -133,6 +144,7 @@ model Document {
   chunks        DocumentChunk[]
   chapters      Chapter[]
   contentBlocks ContentBlock[]
+  classMaterials ClassMaterial[]
 
   @@index([userId, educationSystem, level, subject])
   @@index([board, class, subject, year])
@@ -246,10 +258,15 @@ model PastPaper {
   fileUrl     String
   fileSize    Int
   processed   Boolean  @default(false)
+  extractionStatus  String   @default("uploaded") // uploaded | extracting | pending_review | approved | indexed | failed
+  extractionDraft   Json?
+  questionCount     Int?
+  extractionMethod  String?  // gemini_vision | tesseract | legacy
   createdAt   DateTime @default(now())
   
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   questions   PastPaperQuestion[]
+  classMaterials ClassMaterial[]
 
   @@index([userId, subject, year])
   @@index([board, class, subject])
@@ -496,4 +513,225 @@ model ChatMessage {
 
   @@index([sessionId, createdAt])
   @@map("chat_messages")
+}
+
+// ── ExamGenie (student quiz layer) ───────────────────────────────────────────
+
+model QuizSession {
+  id            String   @id @default(uuid())
+  userId        String
+  subject       String
+  board         String?
+  class         String?
+  chapterStart  Int?
+  chapterEnd    Int?
+  quizType      String   @default("mcq")
+  mode          String   @default("smart")
+  questionCount Int
+  status        String   @default("ready")
+  sourceSummary Json?
+  isClassTemplate Boolean @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions     QuizQuestion[]
+  attempts      QuizAttempt[]
+  classAssignment ClassAssignment?
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("quiz_sessions")
+}
+
+model QuizQuestion {
+  id             String   @id @default(uuid())
+  quizSessionId  String
+  orderIndex     Int
+  questionText   String   @db.Text
+  questionType   String   @default("mcq")
+  options        Json
+  correctOption  String
+  topicTag       String?
+  concept        String?
+  difficulty     String?
+  explanation    String?  @db.Text
+
+  quizSession    QuizSession @relation(fields: [quizSessionId], references: [id], onDelete: Cascade)
+
+  @@index([quizSessionId, orderIndex])
+  @@map("quiz_questions")
+}
+
+model QuizAttempt {
+  id            String    @id @default(uuid())
+  quizSessionId String
+  userId        String
+  score         Int?
+  total         Int
+  percentage    Float?
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+
+  quizSession   QuizSession     @relation(fields: [quizSessionId], references: [id], onDelete: Cascade)
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers       AttemptAnswer[]
+
+  @@index([userId, completedAt(sort: Desc)])
+  @@index([quizSessionId])
+  @@map("quiz_attempts")
+}
+
+model AttemptAnswer {
+  id              String  @id @default(uuid())
+  attemptId       String
+  questionId      String
+  selectedOption  String?
+  isCorrect       Boolean?
+
+  attempt         QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId])
+  @@map("attempt_answers")
+}
+
+// ── Classroom (teacher ↔ student) ───────────────────────────────────────────
+
+model Classroom {
+  id          String   @id @default(uuid())
+  teacherId   String
+  name        String
+  subject     String
+  classGrade  String?
+  board       String?
+  joinCode    String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  teacher     User              @relation("TeacherClassrooms", fields: [teacherId], references: [id], onDelete: Cascade)
+  enrollments ClassEnrollment[]
+  materials   ClassMaterial[]
+  assignments ClassAssignment[]
+  messages    ClassMessage[]
+
+  @@index([teacherId])
+  @@map("classrooms")
+}
+
+model ClassEnrollment {
+  id          String   @id @default(uuid())
+  classroomId String
+  studentId   String
+  status      String   @default("active")
+  joinedAt    DateTime @default(now())
+
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  student     User      @relation("StudentEnrollments", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classroomId, studentId])
+  @@index([studentId])
+  @@map("class_enrollments")
+}
+
+model ClassMaterial {
+  id          String   @id @default(uuid())
+  classroomId String
+  teacherId   String
+  documentId  String?
+  pastPaperId String?
+  title       String?
+  note        String?
+  sharedAt    DateTime @default(now())
+
+  classroom   Classroom  @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  teacher     User       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  document    Document?  @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  pastPaper   PastPaper? @relation(fields: [pastPaperId], references: [id], onDelete: SetNull)
+
+  @@index([classroomId, sharedAt(sort: Desc)])
+  @@map("class_materials")
+}
+
+model ClassAssignment {
+  id             String    @id @default(uuid())
+  classroomId    String
+  teacherId      String
+  quizSessionId  String    @unique
+  title          String
+  instructions   String?   @db.Text
+  assignmentMode   String    @default("practice")
+  durationMinutes  Int?
+  dueAt            DateTime?
+  allowReviewAfterSubmit Boolean @default(true)
+  status         String    @default("active")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  classroom      Classroom   @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  teacher        User        @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  quizSession    QuizSession @relation(fields: [quizSessionId], references: [id], onDelete: Cascade)
+  reminders      AssignmentReminder[]
+
+  @@index([classroomId, status])
+  @@map("class_assignments")
+}
+
+// ── Notifications (in-app + email triggers) ─────────────────────────────────
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  type      String
+  title     String
+  body      String    @db.Text
+  link      String?
+  metadata  Json?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model AssignmentReminder {
+  id             String   @id @default(uuid())
+  assignmentId   String
+  userId         String
+  reminderType   String   @default("due_24h")
+  sentAt         DateTime @default(now())
+
+  assignment ClassAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, userId, reminderType])
+  @@index([assignmentId])
+  @@map("assignment_reminders")
+}
+
+// ── Classroom group chat ─────────────────────────────────────────────────────
+
+model ClassMessage {
+  id          String   @id @default(uuid())
+  classroomId String
+  senderId    String
+  messageType String   @default("text")
+  content     String?  @db.Text
+  fileUrl     String?
+  fileName    String?
+  mimeType    String?
+  fileSize    Int?
+  durationSec Int?
+  replyToId   String?
+  createdAt   DateTime @default(now())
+
+  classroom Classroom     @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  sender    User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo   ClassMessage? @relation("ClassMessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   ClassMessage[] @relation("ClassMessageReplies")
+
+  @@index([classroomId, createdAt(sort: Desc)])
+  @@map("class_messages")
 }

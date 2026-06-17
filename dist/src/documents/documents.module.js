@@ -20,7 +20,7 @@ exports.DocumentsModule = DocumentsModule = __decorate([
         imports: [prisma_module_1.PrismaModule],
         providers: [documents_service_1.DocumentsService, supabase_service_1.SupabaseService],
         controllers: [documents_controller_1.DocumentsController],
-        exports: [documents_service_1.DocumentsService],
+        exports: [documents_service_1.DocumentsService, supabase_service_1.SupabaseService],
     })
 ], DocumentsModule);
 //# sourceMappingURL=documents.module.js.map

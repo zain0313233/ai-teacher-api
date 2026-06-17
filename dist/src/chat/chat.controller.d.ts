@@ -11,13 +11,13 @@ export declare class ChatController {
             createdAt: Date;
             updatedAt: Date;
             subject: string | null;
-            context: import("@prisma/client/runtime/client").JsonValue;
-            title: string;
             messages: {
                 role: string;
                 createdAt: Date;
                 content: string;
             }[];
+            context: import("@prisma/client/runtime/client").JsonValue;
+            title: string;
         }[];
     }>;
     createSession(req: any, dto: CreateSessionDto): Promise<{

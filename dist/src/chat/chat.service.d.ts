@@ -10,13 +10,13 @@ export declare class ChatService {
         createdAt: Date;
         updatedAt: Date;
         subject: string | null;
-        context: Prisma.JsonValue;
-        title: string;
         messages: {
             role: string;
             createdAt: Date;
             content: string;
         }[];
+        context: Prisma.JsonValue;
+        title: string;
     }[]>;
     createSession(userId: string, dto: CreateSessionDto): Promise<{
         id: string;

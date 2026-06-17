@@ -950,6 +950,108 @@ RULES:
             throw new Error('Failed to generate custom pattern');
         }
     }
+    questionCountFromSections(sections) {
+        return (sections || []).reduce((sum, s) => sum + (s.numberOfQuestions || s.questionsToAttempt || 0), 0);
+    }
+    builtInPatternId(subject, classLevel) {
+        const normSubject = subject.trim().toLowerCase().replace(/\s+/g, '_');
+        return `builtin:pecta:${normSubject}:${classLevel}`;
+    }
+    async getAvailablePatternsForStudent(userId, subject) {
+        const profile = await this.prisma.studentProfile.findUnique({
+            where: { userId },
+        });
+        const classLevel = profile?.classGrade?.replace(/\D/g, '') || '9';
+        const board = profile?.board || 'punjab';
+        const enrollments = await this.prisma.classEnrollment.findMany({
+            where: { studentId: userId, status: 'active' },
+            include: { classroom: { select: { teacherId: true } } },
+        });
+        const teacherIds = [...new Set(enrollments.map((e) => e.classroom.teacherId))];
+        const teacherPatterns = teacherIds.length
+            ? await this.prisma.pattern.findMany({
+                where: {
+                    userId: { in: teacherIds },
+                    subject: { equals: subject, mode: 'insensitive' },
+                },
+                orderBy: [{ lastUsed: 'desc' }, { updatedAt: 'desc' }],
+            })
+            : [];
+        const patterns = [];
+        const normBoard = this.normalizeBoardForPecta(board);
+        const syllabusVariant = classLevel && ['9', '10'].includes(classLevel) ? 'pecta' : 'legacy';
+        const builtIn = (0, pecta_templates_1.buildPectaTemplateIfApplicable)(normBoard, 'Pakistan', subject, classLevel, syllabusVariant);
+        if (builtIn) {
+            patterns.push({
+                id: this.builtInPatternId(subject, classLevel),
+                name: builtIn.name,
+                subject: builtIn.subject,
+                totalMarks: builtIn.totalMarks,
+                duration: builtIn.duration,
+                sections: builtIn.sections,
+                source: 'builtin',
+            });
+        }
+        for (const p of teacherPatterns) {
+            patterns.push({
+                id: p.id,
+                name: p.name,
+                subject: p.subject,
+                totalMarks: p.totalMarks,
+                duration: p.duration,
+                sections: p.sections,
+                source: 'teacher',
+            });
+        }
+        return { success: true, patterns };
+    }
+    async resolvePatternForStudentQuiz(userId, patternId, subject) {
+        if (patternId.startsWith('builtin:')) {
+            const profile = await this.prisma.studentProfile.findUnique({
+                where: { userId },
+            });
+            const classLevel = profile?.classGrade?.replace(/\D/g, '') || '9';
+            const board = profile?.board || 'punjab';
+            const normBoard = this.normalizeBoardForPecta(board);
+            const syllabusVariant = classLevel && ['9', '10'].includes(classLevel) ? 'pecta' : 'legacy';
+            const builtIn = (0, pecta_templates_1.buildPectaTemplateIfApplicable)(normBoard, 'Pakistan', subject, classLevel, syllabusVariant);
+            if (!builtIn || this.builtInPatternId(subject, classLevel) !== patternId) {
+                throw new common_1.NotFoundException('Built-in pattern not available for your grade/board');
+            }
+            return {
+                patternId,
+                ...this.toGenerationPayload({
+                    name: builtIn.name,
+                    subject: builtIn.subject,
+                    totalMarks: builtIn.totalMarks,
+                    duration: builtIn.duration,
+                    sections: builtIn.sections,
+                }),
+            };
+        }
+        const pattern = await this.prisma.pattern.findUnique({
+            where: { id: patternId },
+        });
+        if (!pattern) {
+            throw new common_1.NotFoundException('Pattern not found');
+        }
+        if (pattern.userId !== userId) {
+            const teacherAccess = await this.prisma.classEnrollment.findFirst({
+                where: {
+                    studentId: userId,
+                    status: 'active',
+                    classroom: { teacherId: pattern.userId },
+                },
+            });
+            if (!teacherAccess) {
+                throw new common_1.ForbiddenException('You do not have access to this pattern');
+            }
+        }
+        return {
+            patternId: pattern.id,
+            ...this.toGenerationPayload(pattern),
+        };
+    }
 };
 exports.PatternsService = PatternsService;
 exports.PatternsService = PatternsService = __decorate([

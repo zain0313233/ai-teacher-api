@@ -149,5 +149,28 @@ export declare class PatternsService {
     private parseSearchResults;
     private recalculateMarks;
     private generateCustomPattern;
+    questionCountFromSections(sections: any[]): number;
+    private builtInPatternId;
+    getAvailablePatternsForStudent(userId: string, subject: string): Promise<{
+        success: boolean;
+        patterns: {
+            id: string;
+            name: string;
+            subject: string;
+            totalMarks: number;
+            duration: number;
+            sections: unknown;
+            source: "builtin" | "teacher";
+        }[];
+    }>;
+    resolvePatternForStudentQuiz(userId: string, patternId: string, subject: string): Promise<{
+        name: string;
+        subject: string;
+        totalMarks: number;
+        duration: number;
+        sections: unknown;
+        instructions: string;
+        patternId: string;
+    }>;
 }
 export {};

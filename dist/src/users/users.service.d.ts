@@ -51,6 +51,9 @@ export declare class UsersService {
         role: import("@prisma/client").$Enums.UserRole;
         plan: import("@prisma/client").$Enums.PlanType;
         isVerified: boolean;
+        emailNotifyAssignments: boolean;
+        emailNotifyDueReminders: boolean;
+        inAppNotifications: boolean;
         createdAt: Date;
         updatedAt: Date;
     }>;
@@ -93,6 +96,9 @@ export declare class UsersService {
         role: import("@prisma/client").$Enums.UserRole;
         plan: import("@prisma/client").$Enums.PlanType;
         isVerified: boolean;
+        emailNotifyAssignments: boolean;
+        emailNotifyDueReminders: boolean;
+        inAppNotifications: boolean;
         createdAt: Date;
         updatedAt: Date;
     }>;

@@ -12,6 +12,11 @@ import { PastPapersModule } from './past-papers/past-papers.module';
 import { ExamAssistantModule } from './exam-assistant/exam-assistant.module';
 import { AdminModule } from './admin/admin.module';
 import { ChatModule } from './chat/chat.module';
+import { ExamGenieModule } from './exam-genie/exam-genie.module';
+import { ClassroomsModule } from './classrooms/classrooms.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { RealtimeModule } from './realtime/realtime.module';
+import { ClassChatModule } from './class-chat/class-chat.module';
 
 @Module({
   imports: [
@@ -28,6 +33,11 @@ import { ChatModule } from './chat/chat.module';
     ExamAssistantModule,
     AdminModule,
     ChatModule,
+    ExamGenieModule,
+    ClassroomsModule,
+    NotificationsModule,
+    RealtimeModule,
+    ClassChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],

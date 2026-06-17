@@ -9,6 +9,8 @@ import {
   Request,
   UseInterceptors,
   UploadedFile,
+  Query,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -37,23 +39,37 @@ export class PastPapersController {
     @UploadedFile() file: Express.Multer.File,
     @Body() metadata: any,
   ) {
-    const result = await this.pastPapersService.uploadPastPaper(
-      req.user.id,
-      file,
-      metadata,
-    );
+    return this.pastPapersService.uploadPastPaper(req.user.id, file, metadata);
+  }
 
-    return result;
+  @Get('coverage')
+  async getPatternCoverage(
+    @Request() req,
+    @Query('subject') subject: string,
+    @Query('chapters') chapters?: string,
+    @Query('mode') mode?: string,
+  ) {
+    if (!subject) {
+      throw new BadRequestException('subject query parameter is required');
+    }
+    const chapterList = chapters
+      ? chapters
+          .split(',')
+          .map((c) => parseInt(c.trim(), 10))
+          .filter((n) => !isNaN(n))
+      : [];
+    return this.pastPapersService.getPatternCoverage(
+      req.user.id,
+      subject,
+      chapterList,
+      mode || 'smart',
+    );
   }
 
   @Get()
   async getUserPastPapers(@Request() req) {
     const pastPapers = await this.pastPapersService.getUserPastPapers(req.user.id);
-
-    return {
-      success: true,
-      pastPapers,
-    };
+    return { success: true, pastPapers };
   }
 
   @Post('patterns')
@@ -64,20 +80,36 @@ export class PastPapersController {
       body.chapters,
       body.mode || 'smart',
     );
+    return { success: true, ...patterns };
+  }
 
-    return {
-      success: true,
-      ...patterns,
-    };
+  @Get(':id/extraction')
+  async getExtraction(@Request() req, @Param('id') id: string) {
+    return this.pastPapersService.getExtraction(id, req.user.id);
+  }
+
+  @Post(':id/extract')
+  async triggerExtract(
+    @Request() req,
+    @Param('id') id: string,
+    @Query('method') method?: string,
+  ) {
+    return this.pastPapersService.triggerExtract(id, req.user.id, method);
+  }
+
+  @Post(':id/approve')
+  async approvePastPaper(@Request() req, @Param('id') id: string) {
+    return this.pastPapersService.approvePastPaper(id, req.user.id);
+  }
+
+  @Post(':id/reject')
+  async rejectPastPaper(@Request() req, @Param('id') id: string) {
+    return this.pastPapersService.rejectPastPaper(id, req.user.id);
   }
 
   @Delete(':id')
   async deletePastPaper(@Request() req, @Param('id') id: string) {
     const result = await this.pastPapersService.deletePastPaper(id, req.user.id);
-
-    return {
-      success: true,
-      ...result,
-    };
+    return { success: true, ...result };
   }
 }

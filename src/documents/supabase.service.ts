@@ -1,20 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { mkdir, writeFile } from 'fs/promises';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
 @Injectable()
 export class SupabaseService {
-  private supabase: SupabaseClient;
+  private supabase: SupabaseClient | null = null;
   private bucketName = 'documents';
 
   constructor() {
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase credentials not found in environment variables');
+    if (supabaseUrl && supabaseKey) {
+      this.supabase = createClient(supabaseUrl, supabaseKey);
     }
-
-    this.supabase = createClient(supabaseUrl, supabaseKey);
   }
 
   async uploadFile(file: Express.Multer.File): Promise<string> {
@@ -25,44 +26,73 @@ export class SupabaseService {
     );
   }
 
+  private async uploadLocal(
+    buffer: Buffer,
+    originalName: string,
+    folder: string,
+  ): Promise<string> {
+    const dir = join(process.cwd(), 'uploads', folder);
+    if (!existsSync(dir)) {
+      await mkdir(dir, { recursive: true });
+    }
+
+    const timestamp = Date.now();
+    const safeName = originalName.replace(/[^\w.\-]+/g, '_');
+    const fileName = `${timestamp}-${safeName}`;
+    await writeFile(join(dir, fileName), buffer);
+
+    const port = process.env.PORT ?? 3001;
+    const base = (process.env.API_PUBLIC_URL || `http://localhost:${port}`).replace(/\/$/, '');
+    const urlPath = `${folder}/${fileName}`.replace(/\\/g, '/');
+    return `${base}/uploads/${urlPath}`;
+  }
+
   async uploadBuffer(
     buffer: Buffer,
     originalName: string,
     contentType: string,
     folder = 'uploads',
   ): Promise<string> {
-    try {
-      const timestamp = Date.now();
-      const safeName = originalName.replace(/[^\w.\-]+/g, '_');
-      const filePath = `${folder}/${timestamp}-${safeName}`;
-
-      const { error } = await this.supabase.storage
-        .from(this.bucketName)
-        .upload(filePath, buffer, {
-          contentType,
-          upsert: false,
-        });
-
-      if (error) {
-        console.error('Supabase upload error:', error);
-        throw error;
-      }
-
-      const { data: urlData } = this.supabase.storage
-        .from(this.bucketName)
-        .getPublicUrl(filePath);
-
-      return urlData.publicUrl;
-    } catch (error) {
-      console.error('Error uploading to Supabase:', error);
-      throw error;
+    if (!buffer?.length) {
+      throw new Error('Empty file buffer');
     }
+
+    if (this.supabase) {
+      try {
+        const timestamp = Date.now();
+        const safeName = originalName.replace(/[^\w.\-]+/g, '_');
+        const filePath = `${folder}/${timestamp}-${safeName}`;
+
+        const { error } = await this.supabase.storage
+          .from(this.bucketName)
+          .upload(filePath, buffer, {
+            contentType,
+            upsert: false,
+          });
+
+        if (error) {
+          throw error;
+        }
+
+        const { data: urlData } = this.supabase.storage
+          .from(this.bucketName)
+          .getPublicUrl(filePath);
+
+        return urlData.publicUrl;
+      } catch (error) {
+        console.warn('Supabase upload failed, using local storage:', (error as Error).message);
+      }
+    }
+
+    return this.uploadLocal(buffer, originalName, folder);
   }
 
   async deleteFile(fileUrl: string): Promise<void> {
+    if (!this.supabase) return;
+
     try {
-      // Extract file path from URL
       const filePath = this.extractFilePath(fileUrl);
+      if (!filePath) return;
 
       const { error } = await this.supabase.storage
         .from(this.bucketName)
