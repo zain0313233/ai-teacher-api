@@ -53,6 +53,7 @@ model User {
   classMaterialsShared ClassMaterial[]
   classAssignmentsCreated ClassAssignment[]
   classMessagesSent     ClassMessage[]
+  questionBanks         QuestionBank[]
 
   @@map("users")
 }
@@ -614,6 +615,7 @@ model Classroom {
   materials   ClassMaterial[]
   assignments ClassAssignment[]
   messages    ClassMessage[]
+  questionBanks QuestionBank[]
 
   @@index([teacherId])
   @@map("classrooms")
@@ -663,6 +665,9 @@ model ClassAssignment {
   assignmentMode   String    @default("practice")
   durationMinutes  Int?
   dueAt            DateTime?
+  publishAt          DateTime?
+  publishNotifiedAt  DateTime?
+  proctoringEnabled  Boolean   @default(false)
   allowReviewAfterSubmit Boolean @default(true)
   status         String    @default("active")
   createdAt      DateTime  @default(now())
@@ -734,4 +739,45 @@ model ClassMessage {
 
   @@index([classroomId, createdAt(sort: Desc)])
   @@map("class_messages")
+}
+
+// ── Question bank (per classroom) ───────────────────────────────────────────
+
+model QuestionBank {
+  id          String   @id @default(uuid())
+  classroomId String
+  teacherId   String
+  name        String
+  subject     String?
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  classroom   Classroom          @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  teacher     User               @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  items       QuestionBankItem[]
+
+  @@index([classroomId, updatedAt(sort: Desc)])
+  @@map("question_banks")
+}
+
+model QuestionBankItem {
+  id            String   @id @default(uuid())
+  bankId        String
+  orderIndex    Int
+  questionText  String   @db.Text
+  questionType  String   @default("mcq")
+  options       Json
+  correctOption String
+  topicTag      String?
+  concept       String?
+  difficulty    String?
+  explanation   String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  bank          QuestionBank @relation(fields: [bankId], references: [id], onDelete: Cascade)
+
+  @@index([bankId, orderIndex])
+  @@map("question_bank_items")
 }

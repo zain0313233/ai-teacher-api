@@ -50,6 +50,8 @@ const prisma_service_1 = require("../prisma/prisma.service");
 const email_service_1 = require("./email.service");
 const password_util_1 = require("./utils/password.util");
 const crypto = __importStar(require("crypto"));
+const RESEND_OTP_COOLDOWN_MS = 60 * 1000;
+const FORGOT_PASSWORD_COOLDOWN_MS = 60 * 1000;
 let AuthService = class AuthService {
     prisma;
     jwtService;
@@ -149,6 +151,32 @@ let AuthService = class AuthService {
         await this.prisma.otpCode.delete({ where: { id: otpRecord.id } });
         return { message: 'Email verified successfully' };
     }
+    async getVerificationStatus(email) {
+        const user = await this.prisma.user.findUnique({
+            where: { email },
+            select: { id: true, isVerified: true },
+        });
+        if (!user) {
+            throw new common_1.NotFoundException('No account found with this email');
+        }
+        return {
+            needsVerification: !user.isVerified,
+            userId: user.isVerified ? undefined : user.id,
+        };
+    }
+    async assertResendCooldown(userId) {
+        const latestOtp = await this.prisma.otpCode.findFirst({
+            where: { userId },
+            orderBy: { createdAt: 'desc' },
+        });
+        if (latestOtp) {
+            const elapsed = Date.now() - latestOtp.createdAt.getTime();
+            if (elapsed < RESEND_OTP_COOLDOWN_MS) {
+                const waitSec = Math.ceil((RESEND_OTP_COOLDOWN_MS - elapsed) / 1000);
+                throw new common_1.BadRequestException(`Please wait ${waitSec} seconds before requesting a new code`);
+            }
+        }
+    }
     async resendOtp(userId) {
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
@@ -159,6 +187,7 @@ let AuthService = class AuthService {
         if (user.isVerified) {
             throw new common_1.BadRequestException('Email already verified');
         }
+        await this.assertResendCooldown(userId);
         await this.prisma.otpCode.deleteMany({
             where: { userId },
         });
@@ -186,7 +215,11 @@ let AuthService = class AuthService {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
         if (!user.isVerified) {
-            throw new common_1.UnauthorizedException('Please verify your email first');
+            throw new common_1.UnauthorizedException({
+                message: 'Please verify your email first',
+                code: 'EMAIL_NOT_VERIFIED',
+                userId: user.id,
+            });
         }
         const accessToken = this.generateAccessToken(user.id, user.role);
         const refreshToken = this.generateRefreshToken(user.id);
@@ -222,6 +255,17 @@ let AuthService = class AuthService {
         if (!user) {
             return { message: 'If email exists, reset link has been sent' };
         }
+        const latestReset = await this.prisma.passwordReset.findFirst({
+            where: { userId: user.id },
+            orderBy: { createdAt: 'desc' },
+        });
+        if (latestReset) {
+            const elapsed = Date.now() - latestReset.createdAt.getTime();
+            if (elapsed < FORGOT_PASSWORD_COOLDOWN_MS) {
+                const waitSec = Math.ceil((FORGOT_PASSWORD_COOLDOWN_MS - elapsed) / 1000);
+                throw new common_1.BadRequestException(`Please wait ${waitSec} seconds before requesting another reset link`);
+            }
+        }
         const resetToken = crypto.randomBytes(32).toString('hex');
         await this.prisma.passwordReset.deleteMany({
             where: { userId: user.id },
@@ -236,17 +280,35 @@ let AuthService = class AuthService {
         await this.emailService.sendPasswordResetEmail(user.email, user.name, resetToken);
         return { message: 'If email exists, reset link has been sent' };
     }
+    async getResetTokenStatus(token) {
+        const resetRecord = await this.prisma.passwordReset.findUnique({
+            where: { token },
+        });
+        if (!resetRecord) {
+            return { valid: false, reason: 'INVALID' };
+        }
+        if (resetRecord.expiresAt < new Date()) {
+            return { valid: false, reason: 'EXPIRED' };
+        }
+        return { valid: true };
+    }
     async resetPassword(token, newPassword) {
         const resetRecord = await this.prisma.passwordReset.findUnique({
             where: { token },
             include: { user: true },
         });
         if (!resetRecord) {
-            throw new common_1.BadRequestException('Invalid or expired reset token');
+            throw new common_1.BadRequestException({
+                message: 'This reset link is invalid or has already been used',
+                code: 'RESET_TOKEN_INVALID',
+            });
         }
         if (resetRecord.expiresAt < new Date()) {
             await this.prisma.passwordReset.delete({ where: { token } });
-            throw new common_1.BadRequestException('Reset token expired');
+            throw new common_1.BadRequestException({
+                message: 'This reset link has expired. Please request a new one.',
+                code: 'RESET_TOKEN_EXPIRED',
+            });
         }
         const hashedPassword = await (0, password_util_1.hashPassword)(newPassword);
         await this.prisma.user.update({

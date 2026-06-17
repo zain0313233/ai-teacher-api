@@ -22,6 +22,11 @@ export declare class AuthService {
     verifyEmail(userId: string, otp: string): Promise<{
         message: string;
     }>;
+    getVerificationStatus(email: string): Promise<{
+        needsVerification: boolean;
+        userId: string | undefined;
+    }>;
+    private assertResendCooldown;
     resendOtp(userId: string): Promise<{
         message: string;
     }>;
@@ -69,6 +74,16 @@ export declare class AuthService {
     }>;
     forgotPassword(email: string): Promise<{
         message: string;
+    }>;
+    getResetTokenStatus(token: string): Promise<{
+        valid: boolean;
+        reason: "INVALID";
+    } | {
+        valid: boolean;
+        reason: "EXPIRED";
+    } | {
+        valid: boolean;
+        reason?: undefined;
     }>;
     resetPassword(token: string, newPassword: string): Promise<{
         message: string;

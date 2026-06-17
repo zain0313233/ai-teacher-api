@@ -88,4 +88,5 @@ export declare class NotificationsService {
         name: string;
     }, materialTitle: string): Promise<void>;
     processDueReminders(): Promise<number>;
+    processScheduledPublications(): Promise<number>;
 }

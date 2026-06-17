@@ -51,17 +51,29 @@ let EmailService = class EmailService {
     transporter;
     constructor(configService) {
         this.configService = configService;
-        this.transporter = nodemailer.createTransport({
-            host: this.configService.get('SMTP_HOST'),
-            port: this.configService.get('SMTP_PORT'),
-            secure: this.configService.get('SMTP_SECURE') === 'true',
-            auth: {
-                user: this.configService.get('SMTP_USER'),
-                pass: this.configService.get('SMTP_PASS'),
-            },
-        });
+        if (this.isSmtpConfigured()) {
+            this.transporter = nodemailer.createTransport({
+                host: this.configService.get('SMTP_HOST'),
+                port: this.configService.get('SMTP_PORT'),
+                secure: this.configService.get('SMTP_SECURE') === 'true',
+                auth: {
+                    user: this.configService.get('SMTP_USER'),
+                    pass: this.configService.get('SMTP_PASS'),
+                },
+            });
+        }
+    }
+    isSmtpConfigured() {
+        return Boolean(this.configService.get('SMTP_HOST') &&
+            this.configService.get('SMTP_USER') &&
+            this.configService.get('SMTP_PASS'));
     }
     async sendVerificationEmail(email, name, otp) {
+        if (!this.isSmtpConfigured()) {
+            console.warn('⚠️ SMTP not configured — verification OTP (dev only):', otp);
+            console.warn('📧 Would send to:', email);
+            return;
+        }
         const mailOptions = {
             from: `${this.configService.get('SMTP_FROM_NAME')} <${this.configService.get('SMTP_FROM_EMAIL')}>`,
             to: email,
@@ -93,6 +105,12 @@ let EmailService = class EmailService {
     }
     async sendPasswordResetEmail(email, name, resetToken) {
         const resetUrl = `${this.configService.get('FRONTEND_URL')}/reset-password?token=${resetToken}`;
+        if (!this.isSmtpConfigured()) {
+            console.warn('⚠️ SMTP not configured — password reset link (dev only):');
+            console.warn(resetUrl);
+            console.warn('📧 Would send to:', email);
+            return;
+        }
         const mailOptions = {
             from: `${this.configService.get('SMTP_FROM_NAME')} <${this.configService.get('SMTP_FROM_EMAIL')}>`,
             to: email,

@@ -489,6 +489,56 @@ let ExamGenieService = class ExamGenieService {
             },
         });
     }
+    async createQuizSessionFromBankItems(params) {
+        const { ownerId, subject, classGrade, board, chapterStart, chapterEnd, items, bankItemIds } = params;
+        const types = new Set(items.map((i) => i.questionType.toLowerCase()));
+        let quizType = 'mcq';
+        if (types.size > 1) {
+            quizType = 'all';
+        }
+        else if (types.has('short')) {
+            quizType = 'short';
+        }
+        else if (types.has('long')) {
+            quizType = 'long';
+        }
+        await this.ensureDbReady();
+        return this.prisma.quizSession.create({
+            data: {
+                userId: ownerId,
+                subject,
+                board,
+                class: classGrade,
+                chapterStart,
+                chapterEnd,
+                quizType,
+                mode: 'normal',
+                questionCount: items.length,
+                status: 'ready',
+                isClassTemplate: true,
+                sourceSummary: {
+                    source: 'question_bank',
+                    bankItemIds,
+                },
+                questions: {
+                    create: items.map((q, index) => ({
+                        orderIndex: index + 1,
+                        questionText: q.questionText,
+                        questionType: q.questionType.toLowerCase(),
+                        options: (q.options ?? {}),
+                        correctOption: q.correctOption || '-',
+                        topicTag: q.topicTag,
+                        concept: q.concept,
+                        difficulty: q.difficulty,
+                        explanation: q.explanation,
+                    })),
+                },
+            },
+            include: {
+                questions: { orderBy: { orderIndex: 'asc' } },
+            },
+        });
+    }
     async cloneClassQuizSession(sourceQuizId, ownerId) {
         const source = await this.prisma.quizSession.findFirst({
             where: { id: sourceQuizId, isClassTemplate: true },

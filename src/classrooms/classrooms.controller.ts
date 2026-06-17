@@ -13,6 +13,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { ClassroomsService } from './classrooms.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { CreateClassroomDto } from './dto/create-classroom.dto';
 import { JoinClassroomDto } from './dto/join-classroom.dto';
 import { ShareMaterialDto } from './dto/share-material.dto';
@@ -23,7 +24,10 @@ import { SubmitQuizDto } from '../exam-genie/dto/submit-quiz.dto';
 @Controller('classrooms')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ClassroomsController {
-  constructor(private readonly classroomsService: ClassroomsService) {}
+  constructor(
+    private readonly classroomsService: ClassroomsService,
+    private readonly analyticsService: AnalyticsService,
+  ) {}
 
   // ── Teacher ─────────────────────────────────────────────────────────────
 
@@ -49,6 +53,12 @@ export class ClassroomsController {
   @Roles('TEACHER')
   getClassroomReport(@Request() req, @Param('id') id: string) {
     return this.classroomsService.getClassroomReport(req.user.id, id);
+  }
+
+  @Get('teacher/:id/analytics')
+  @Roles('TEACHER')
+  getClassroomAnalytics(@Request() req, @Param('id') id: string) {
+    return this.analyticsService.getClassroomAnalytics(req.user.id, id);
   }
 
   @Post('teacher/:id/materials')

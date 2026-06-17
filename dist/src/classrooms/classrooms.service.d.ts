@@ -8,18 +8,26 @@ import { DuplicateAssignmentDto } from './dto/duplicate-assignment.dto';
 import { SubmitQuizDto } from '../exam-genie/dto/submit-quiz.dto';
 import { PatternsService } from '../patterns/patterns.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { QuestionBanksService } from '../question-banks/question-banks.service';
 export declare class ClassroomsService {
     private prisma;
     private examGenieService;
     private patternsService;
     private notificationsService;
-    constructor(prisma: PrismaService, examGenieService: ExamGenieService, patternsService: PatternsService, notificationsService: NotificationsService);
+    private questionBanksService;
+    constructor(prisma: PrismaService, examGenieService: ExamGenieService, patternsService: PatternsService, notificationsService: NotificationsService, questionBanksService: QuestionBanksService);
     private generateJoinCode;
     private uniqueJoinCode;
     private assertTeacherClassroom;
+    private isAssignmentPublished;
+    private parseOptionalDate;
+    private validateAssignmentSchedule;
+    private notifyAssignmentIfPublished;
     private resolveAssignmentStatus;
     private escapeCsv;
     private assignmentStatusSortOrder;
+    private publishedAssignmentFilter;
+    private resolveProctoringEnabled;
     private assertStudentEnrollment;
     createClassroom(teacherId: string, dto: CreateClassroomDto): Promise<{
         success: boolean;
@@ -114,6 +122,9 @@ export declare class ClassroomsService {
                 assignmentMode: string;
                 durationMinutes: number | null;
                 dueAt: Date | null;
+                publishAt: Date | null;
+                publishNotifiedAt: Date | null;
+                proctoringEnabled: boolean;
                 allowReviewAfterSubmit: boolean;
             })[];
         } & {
@@ -172,6 +183,17 @@ export declare class ClassroomsService {
     }>;
     listStudentAssignments(studentId: string): Promise<{
         success: boolean;
+        assignments: never[];
+        summary: {
+            total: number;
+            pending: number;
+            overdue: number;
+            dueSoon: number;
+            submitted: number;
+            scheduled?: undefined;
+        };
+    } | {
+        success: boolean;
         assignments: {
             id: string;
             title: string;
@@ -181,13 +203,16 @@ export declare class ClassroomsService {
             assignmentMode: string;
             durationMinutes: number | null;
             dueAt: Date | null;
+            publishAt: Date | null;
+            proctoringEnabled: boolean;
             createdAt: Date;
             questionCount: number;
             chapterStart: number | null;
             chapterEnd: number | null;
             submitted: boolean;
-            status: "submitted" | "overdue" | "due_soon" | "pending";
+            status: "submitted" | "overdue" | "due_soon" | "pending" | "scheduled";
             isOverdue: boolean;
+            isPublished: boolean;
             latestAttempt: {
                 score: number | null;
                 total: number;
@@ -200,6 +225,7 @@ export declare class ClassroomsService {
             pending: number;
             overdue: number;
             dueSoon: number;
+            scheduled: number;
             submitted: number;
         };
     }>;
@@ -213,6 +239,8 @@ export declare class ClassroomsService {
                 assignmentMode: string;
                 durationMinutes: number | null;
                 dueAt: Date | null;
+                publishAt: Date | null;
+                proctoringEnabled: boolean;
                 createdAt: Date;
                 quizSessionId: string;
                 subject: string;
@@ -221,8 +249,9 @@ export declare class ClassroomsService {
                 chapterStart: number | null;
                 chapterEnd: number | null;
                 submitted: boolean;
-                status: "submitted" | "overdue" | "due_soon" | "pending";
+                status: "submitted" | "overdue" | "due_soon" | "pending" | "scheduled";
                 isOverdue: boolean;
+                isPublished: boolean;
                 latestAttempt: {
                     score: number | null;
                     total: number;
@@ -316,6 +345,9 @@ export declare class ClassroomsService {
             assignmentMode: string;
             durationMinutes: number | null;
             dueAt: Date | null;
+            publishAt: Date | null;
+            publishNotifiedAt: Date | null;
+            proctoringEnabled: boolean;
             allowReviewAfterSubmit: boolean;
         };
     }>;
@@ -341,6 +373,9 @@ export declare class ClassroomsService {
             assignmentMode: string;
             durationMinutes: number | null;
             dueAt: Date | null;
+            publishAt: Date | null;
+            publishNotifiedAt: Date | null;
+            proctoringEnabled: boolean;
             allowReviewAfterSubmit: boolean;
         };
     }>;
@@ -352,6 +387,8 @@ export declare class ClassroomsService {
             assignmentMode: string;
             durationMinutes: number | null;
             dueAt: Date | null;
+            publishAt: Date | null;
+            proctoringEnabled: boolean;
             allowReviewAfterSubmit: boolean;
         };
         timing: {
@@ -419,6 +456,8 @@ export declare class ClassroomsService {
             assignmentMode: string;
             durationMinutes: number | null;
             dueAt: Date | null;
+            publishAt: Date | null;
+            proctoringEnabled: boolean;
             allowReviewAfterSubmit: boolean;
         };
         timing: {

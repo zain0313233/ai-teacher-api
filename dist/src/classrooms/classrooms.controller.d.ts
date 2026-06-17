@@ -1,5 +1,6 @@
 import type { Response } from 'express';
 import { ClassroomsService } from './classrooms.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { CreateClassroomDto } from './dto/create-classroom.dto';
 import { JoinClassroomDto } from './dto/join-classroom.dto';
 import { ShareMaterialDto } from './dto/share-material.dto';
@@ -8,7 +9,8 @@ import { DuplicateAssignmentDto } from './dto/duplicate-assignment.dto';
 import { SubmitQuizDto } from '../exam-genie/dto/submit-quiz.dto';
 export declare class ClassroomsController {
     private readonly classroomsService;
-    constructor(classroomsService: ClassroomsService);
+    private readonly analyticsService;
+    constructor(classroomsService: ClassroomsService, analyticsService: AnalyticsService);
     createClassroom(req: any, dto: CreateClassroomDto): Promise<{
         success: boolean;
         classroom: {
@@ -102,6 +104,9 @@ export declare class ClassroomsController {
                 assignmentMode: string;
                 durationMinutes: number | null;
                 dueAt: Date | null;
+                publishAt: Date | null;
+                publishNotifiedAt: Date | null;
+                proctoringEnabled: boolean;
                 allowReviewAfterSubmit: boolean;
             })[];
         } & {
@@ -143,6 +148,44 @@ export declare class ClassroomsController {
             }[];
         }[];
         studentCount: number;
+    }>;
+    getClassroomAnalytics(req: any, id: string): Promise<{
+        success: boolean;
+        classroom: {
+            id: string;
+            name: string;
+            subject: string;
+            board: string | null;
+            classGrade: string | null;
+        };
+        summary: {
+            studentCount: number;
+            totalAssignments: number;
+            totalSubmissions: number;
+            classAvgScore: number | null;
+            submissionRate: number;
+        };
+        assignmentTrend: {
+            assignmentId: string;
+            title: string;
+            createdAt: Date;
+            avgScore: number | null;
+            submittedCount: number;
+            totalStudents: number;
+            submissionRate: number;
+        }[];
+        monthlyTrend: {
+            month: string;
+            avgScore: number;
+            attemptCount: number;
+        }[];
+        weakTopics: import("../analytics/analytics.helpers").TopicWeaknessRow[];
+        boardBenchmark: {
+            targetPercent: number;
+            classAvgScore: number | null;
+            delta: number | null;
+            message: string;
+        };
     }>;
     shareMaterial(req: any, id: string, dto: ShareMaterialDto): Promise<{
         success: boolean;
@@ -189,6 +232,9 @@ export declare class ClassroomsController {
             assignmentMode: string;
             durationMinutes: number | null;
             dueAt: Date | null;
+            publishAt: Date | null;
+            publishNotifiedAt: Date | null;
+            proctoringEnabled: boolean;
             allowReviewAfterSubmit: boolean;
         };
     }>;
@@ -214,6 +260,9 @@ export declare class ClassroomsController {
             assignmentMode: string;
             durationMinutes: number | null;
             dueAt: Date | null;
+            publishAt: Date | null;
+            publishNotifiedAt: Date | null;
+            proctoringEnabled: boolean;
             allowReviewAfterSubmit: boolean;
         };
     }>;
@@ -259,6 +308,17 @@ export declare class ClassroomsController {
     }>;
     listStudentAssignments(req: any): Promise<{
         success: boolean;
+        assignments: never[];
+        summary: {
+            total: number;
+            pending: number;
+            overdue: number;
+            dueSoon: number;
+            submitted: number;
+            scheduled?: undefined;
+        };
+    } | {
+        success: boolean;
         assignments: {
             id: string;
             title: string;
@@ -268,13 +328,16 @@ export declare class ClassroomsController {
             assignmentMode: string;
             durationMinutes: number | null;
             dueAt: Date | null;
+            publishAt: Date | null;
+            proctoringEnabled: boolean;
             createdAt: Date;
             questionCount: number;
             chapterStart: number | null;
             chapterEnd: number | null;
             submitted: boolean;
-            status: "submitted" | "overdue" | "due_soon" | "pending";
+            status: "submitted" | "overdue" | "due_soon" | "pending" | "scheduled";
             isOverdue: boolean;
+            isPublished: boolean;
             latestAttempt: {
                 score: number | null;
                 total: number;
@@ -287,6 +350,7 @@ export declare class ClassroomsController {
             pending: number;
             overdue: number;
             dueSoon: number;
+            scheduled: number;
             submitted: number;
         };
     }>;
@@ -300,6 +364,8 @@ export declare class ClassroomsController {
                 assignmentMode: string;
                 durationMinutes: number | null;
                 dueAt: Date | null;
+                publishAt: Date | null;
+                proctoringEnabled: boolean;
                 createdAt: Date;
                 quizSessionId: string;
                 subject: string;
@@ -308,8 +374,9 @@ export declare class ClassroomsController {
                 chapterStart: number | null;
                 chapterEnd: number | null;
                 submitted: boolean;
-                status: "submitted" | "overdue" | "due_soon" | "pending";
+                status: "submitted" | "overdue" | "due_soon" | "pending" | "scheduled";
                 isOverdue: boolean;
+                isPublished: boolean;
                 latestAttempt: {
                     score: number | null;
                     total: number;
@@ -363,6 +430,8 @@ export declare class ClassroomsController {
             assignmentMode: string;
             durationMinutes: number | null;
             dueAt: Date | null;
+            publishAt: Date | null;
+            proctoringEnabled: boolean;
             allowReviewAfterSubmit: boolean;
         };
         timing: {
@@ -430,6 +499,8 @@ export declare class ClassroomsController {
             assignmentMode: string;
             durationMinutes: number | null;
             dueAt: Date | null;
+            publishAt: Date | null;
+            proctoringEnabled: boolean;
             allowReviewAfterSubmit: boolean;
         };
         timing: {

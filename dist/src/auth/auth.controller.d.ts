@@ -33,6 +33,11 @@ export declare class AuthController {
         message: string;
         success: boolean;
     }>;
+    verificationStatus(email: string): Promise<{
+        needsVerification: boolean;
+        userId: string | undefined;
+        success: boolean;
+    }>;
     login(loginDto: LoginDto): Promise<{
         accessToken: string;
         refreshToken: string;
@@ -74,6 +79,19 @@ export declare class AuthController {
             userId: string;
             onboardingDone: boolean;
         } | null;
+        success: boolean;
+    }>;
+    resetTokenStatus(token: string): Promise<{
+        valid: boolean;
+        reason: "INVALID";
+        success: boolean;
+    } | {
+        valid: boolean;
+        reason: "EXPIRED";
+        success: boolean;
+    } | {
+        valid: boolean;
+        reason?: undefined;
         success: boolean;
     }>;
     forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<{

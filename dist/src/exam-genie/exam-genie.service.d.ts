@@ -148,7 +148,7 @@ export declare class ExamGenieService {
             totalMarks: number;
             duration: number;
             sections: unknown;
-            source: "builtin" | "teacher";
+            source: "builtin" | "teacher" | "saved";
         }[];
     }>;
     getWeakTopicRecommendations(userId: string, subject?: string): Promise<{
@@ -187,9 +187,58 @@ export declare class ExamGenieService {
             options: import("@prisma/client/runtime/client").JsonValue;
             concept: string | null;
             difficulty: string | null;
+            questionType: string;
             orderIndex: number;
             questionText: string;
+            correctOption: string;
+            topicTag: string | null;
+            explanation: string | null;
+            quizSessionId: string;
+        }[];
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        board: string | null;
+        userId: string;
+        class: string | null;
+        subject: string;
+        mode: string;
+        chapterStart: number | null;
+        chapterEnd: number | null;
+        status: string;
+        questionCount: number;
+        quizType: string;
+        sourceSummary: import("@prisma/client/runtime/client").JsonValue | null;
+        isClassTemplate: boolean;
+    }>;
+    createQuizSessionFromBankItems(params: {
+        ownerId: string;
+        subject: string;
+        classGrade: string;
+        board: string;
+        chapterStart: number;
+        chapterEnd: number;
+        items: Array<{
+            questionText: string;
             questionType: string;
+            options: unknown;
+            correctOption: string;
+            topicTag?: string | null;
+            concept?: string | null;
+            difficulty?: string | null;
+            explanation?: string | null;
+        }>;
+        bankItemIds: string[];
+    }): Promise<{
+        questions: {
+            id: string;
+            options: import("@prisma/client/runtime/client").JsonValue;
+            concept: string | null;
+            difficulty: string | null;
+            questionType: string;
+            orderIndex: number;
+            questionText: string;
             correctOption: string;
             topicTag: string | null;
             explanation: string | null;
@@ -218,9 +267,9 @@ export declare class ExamGenieService {
             options: import("@prisma/client/runtime/client").JsonValue;
             concept: string | null;
             difficulty: string | null;
+            questionType: string;
             orderIndex: number;
             questionText: string;
-            questionType: string;
             correctOption: string;
             topicTag: string | null;
             explanation: string | null;

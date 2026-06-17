@@ -16,12 +16,15 @@ exports.ExamGenieController = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const exam_genie_service_1 = require("./exam-genie.service");
+const analytics_service_1 = require("../analytics/analytics.service");
 const generate_quiz_dto_1 = require("./dto/generate-quiz.dto");
 const submit_quiz_dto_1 = require("./dto/submit-quiz.dto");
 let ExamGenieController = class ExamGenieController {
     examGenieService;
-    constructor(examGenieService) {
+    analyticsService;
+    constructor(examGenieService, analyticsService) {
         this.examGenieService = examGenieService;
+        this.analyticsService = analyticsService;
     }
     getMaterials(req, subject) {
         return this.examGenieService.getMaterials(req.user.id, subject);
@@ -37,6 +40,9 @@ let ExamGenieController = class ExamGenieController {
     }
     getWeakTopics(req, subject) {
         return this.examGenieService.getWeakTopicRecommendations(req.user.id, subject);
+    }
+    getStudentAnalytics(req) {
+        return this.analyticsService.getStudentSubjectAnalytics(req.user.id);
     }
     generateQuiz(req, dto) {
         return this.examGenieService.generateQuiz(req.user.id, dto);
@@ -87,6 +93,13 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ExamGenieController.prototype, "getWeakTopics", null);
 __decorate([
+    (0, common_1.Get)('analytics'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], ExamGenieController.prototype, "getStudentAnalytics", null);
+__decorate([
     (0, common_1.Post)('quizzes/generate'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)()),
@@ -121,6 +134,7 @@ __decorate([
 exports.ExamGenieController = ExamGenieController = __decorate([
     (0, common_1.Controller)('exam-genie'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __metadata("design:paramtypes", [exam_genie_service_1.ExamGenieService])
+    __metadata("design:paramtypes", [exam_genie_service_1.ExamGenieService,
+        analytics_service_1.AnalyticsService])
 ], ExamGenieController);
 //# sourceMappingURL=exam-genie.controller.js.map

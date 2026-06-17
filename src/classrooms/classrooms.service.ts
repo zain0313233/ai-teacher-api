@@ -15,6 +15,7 @@ import { SubmitQuizDto } from '../exam-genie/dto/submit-quiz.dto';
 import { PatternsService } from '../patterns/patterns.service';
 import { GenerateQuizDto } from '../exam-genie/dto/generate-quiz.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { QuestionBanksService } from '../question-banks/question-banks.service';
 
 @Injectable()
 export class ClassroomsService {
@@ -23,6 +24,7 @@ export class ClassroomsService {
     private examGenieService: ExamGenieService,
     private patternsService: PatternsService,
     private notificationsService: NotificationsService,
+    private questionBanksService: QuestionBanksService,
   ) {}
 
   private generateJoinCode(): string {
@@ -53,21 +55,71 @@ export class ClassroomsService {
     return classroom;
   }
 
+  private isAssignmentPublished(publishAt: Date | null | undefined): boolean {
+    if (!publishAt) return true;
+    return publishAt.getTime() <= Date.now();
+  }
+
+  private parseOptionalDate(value: string | undefined, field: string): Date | null {
+    if (!value) return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new BadRequestException(`Invalid ${field}`);
+    }
+    return parsed;
+  }
+
+  private validateAssignmentSchedule(publishAt: Date | null, dueAt: Date | null) {
+    if (publishAt && dueAt && publishAt.getTime() >= dueAt.getTime()) {
+      throw new BadRequestException('Opens at must be before the due date');
+    }
+  }
+
+  private async notifyAssignmentIfPublished(
+    assignment: {
+      id: string;
+      title: string;
+      assignmentMode: string;
+      dueAt: Date | null;
+      publishAt: Date | null;
+      publishNotifiedAt: Date | null;
+    },
+    classroom: { id: string; name: string },
+  ) {
+    if (!this.isAssignmentPublished(assignment.publishAt)) return;
+    if (assignment.publishNotifiedAt) return;
+
+    await this.notificationsService.notifyNewAssignment(assignment, classroom);
+    await this.prisma.classAssignment.update({
+      where: { id: assignment.id },
+      data: { publishNotifiedAt: new Date() },
+    });
+  }
+
   private resolveAssignmentStatus(
     submitted: boolean,
     dueAt: Date | null,
-  ): { status: 'submitted' | 'overdue' | 'due_soon' | 'pending'; isOverdue: boolean } {
-    if (submitted) return { status: 'submitted', isOverdue: false };
+    publishAt: Date | null = null,
+  ): {
+    status: 'submitted' | 'overdue' | 'due_soon' | 'pending' | 'scheduled';
+    isOverdue: boolean;
+    isPublished: boolean;
+  } {
+    const isPublished = this.isAssignmentPublished(publishAt);
+    if (!isPublished) {
+      return { status: 'scheduled', isOverdue: false, isPublished: false };
+    }
+    if (submitted) return { status: 'submitted', isOverdue: false, isPublished: true };
     if (dueAt && new Date() > dueAt) {
-      return { status: 'overdue', isOverdue: true };
+      return { status: 'overdue', isOverdue: true, isPublished: true };
     }
     if (dueAt) {
       const hoursLeft = (dueAt.getTime() - Date.now()) / 3600000;
       if (hoursLeft > 0 && hoursLeft <= 48) {
-        return { status: 'due_soon', isOverdue: false };
+        return { status: 'due_soon', isOverdue: false, isPublished: true };
       }
     }
-    return { status: 'pending', isOverdue: false };
+    return { status: 'pending', isOverdue: false, isPublished: true };
   }
 
   private escapeCsv(value: string | number | null | undefined): string {
@@ -84,9 +136,20 @@ export class ClassroomsService {
       overdue: 0,
       due_soon: 1,
       pending: 2,
-      submitted: 3,
+      scheduled: 3,
+      submitted: 4,
     };
-    return order[status] ?? 4;
+    return order[status] ?? 5;
+  }
+
+  private publishedAssignmentFilter(now = new Date()) {
+    return {
+      OR: [{ publishAt: null }, { publishAt: { lte: now } }],
+    };
+  }
+
+  private resolveProctoringEnabled(assignmentMode: string, enabled?: boolean): boolean {
+    return assignmentMode === 'timed' && Boolean(enabled);
   }
 
   private async assertStudentEnrollment(studentId: string, classroomId: string) {
@@ -240,6 +303,7 @@ export class ClassroomsService {
           where: {
             classroomId: e.classroomId,
             status: 'active',
+            ...this.publishedAssignmentFilter(),
             quizSession: {
               attempts: {
                 none: { userId: studentId, completedAt: { not: null } },
@@ -251,6 +315,7 @@ export class ClassroomsService {
           where: {
             classroomId: e.classroomId,
             status: 'active',
+            ...this.publishedAssignmentFilter(),
             dueAt: { lt: new Date() },
             quizSession: {
               attempts: {
@@ -311,9 +376,10 @@ export class ClassroomsService {
     const mapped = assignments
       .map((a) => {
         const submitted = a.quizSession.attempts.length > 0;
-        const { status, isOverdue } = this.resolveAssignmentStatus(
+        const { status, isOverdue, isPublished } = this.resolveAssignmentStatus(
           submitted,
           a.dueAt,
+          a.publishAt,
         );
         const latestAttempt = a.quizSession.attempts[0];
         return {
@@ -325,6 +391,8 @@ export class ClassroomsService {
           assignmentMode: a.assignmentMode,
           durationMinutes: a.durationMinutes,
           dueAt: a.dueAt,
+          publishAt: a.publishAt,
+          proctoringEnabled: a.proctoringEnabled,
           createdAt: a.createdAt,
           questionCount: a.quizSession.questionCount,
           chapterStart: a.quizSession.chapterStart,
@@ -332,6 +400,7 @@ export class ClassroomsService {
           submitted,
           status,
           isOverdue,
+          isPublished,
           latestAttempt: latestAttempt
             ? {
                 score: latestAttempt.score,
@@ -361,6 +430,7 @@ export class ClassroomsService {
         pending: mapped.filter((a) => !a.submitted).length,
         overdue: mapped.filter((a) => a.isOverdue).length,
         dueSoon: mapped.filter((a) => a.status === 'due_soon').length,
+        scheduled: mapped.filter((a) => a.status === 'scheduled').length,
         submitted: mapped.filter((a) => a.submitted).length,
       },
     };
@@ -400,7 +470,11 @@ export class ClassroomsService {
     const assignments = (classroom?.assignments || [])
       .map((a) => {
         const submitted = a.quizSession.attempts.length > 0;
-        const { status, isOverdue } = this.resolveAssignmentStatus(submitted, a.dueAt);
+        const { status, isOverdue, isPublished } = this.resolveAssignmentStatus(
+          submitted,
+          a.dueAt,
+          a.publishAt,
+        );
         return {
           id: a.id,
           title: a.title,
@@ -408,6 +482,8 @@ export class ClassroomsService {
           assignmentMode: a.assignmentMode,
           durationMinutes: a.durationMinutes,
           dueAt: a.dueAt,
+          publishAt: a.publishAt,
+          proctoringEnabled: a.proctoringEnabled,
           createdAt: a.createdAt,
           quizSessionId: a.quizSessionId,
           subject: a.quizSession.subject,
@@ -418,6 +494,7 @@ export class ClassroomsService {
           submitted,
           status,
           isOverdue,
+          isPublished,
           latestAttempt: a.quizSession.attempts[0]
             ? {
                 score: a.quizSession.attempts[0].score,
@@ -456,7 +533,10 @@ export class ClassroomsService {
 
     if (dto.documentId) {
       const doc = await this.prisma.document.findFirst({
-        where: { id: dto.documentId, userId: teacherId },
+        where: {
+          id: dto.documentId,
+          OR: [{ userId: teacherId }, { isOfficial: true }],
+        },
       });
       if (!doc) throw new NotFoundException('Document not found');
     }
@@ -516,7 +596,17 @@ export class ClassroomsService {
     return { endsAt, timerEnd, remainingSeconds };
   }
 
-  private assertAssignmentOpen(assignment: { dueAt: Date | null }) {
+  private assertAssignmentOpen(assignment: {
+    dueAt: Date | null;
+    publishAt?: Date | null;
+  }) {
+    if (!this.isAssignmentPublished(assignment.publishAt)) {
+      throw new BadRequestException({
+        message: 'This assignment is not open yet',
+        code: 'ASSIGNMENT_NOT_PUBLISHED',
+        publishAt: assignment.publishAt?.toISOString(),
+      });
+    }
     if (assignment.dueAt && new Date() > assignment.dueAt) {
       throw new BadRequestException('Assignment deadline has passed');
     }
@@ -555,7 +645,69 @@ export class ClassroomsService {
     }
 
     const assignmentMode = dto.assignmentMode || 'practice';
+    const publishAt = this.parseOptionalDate(dto.publishAt, 'publishAt');
+    const dueAt = dto.dueAt ? new Date(dto.dueAt) : null;
+    this.validateAssignmentSchedule(publishAt, dueAt);
+    const proctoringEnabled = this.resolveProctoringEnabled(assignmentMode, dto.proctoringEnabled);
+
     let durationMinutes = dto.durationMinutes;
+    const source = dto.source || 'ai';
+
+    if (source === 'bank' && dto.patternId) {
+      throw new BadRequestException('Question bank assignments cannot use a paper pattern');
+    }
+
+    if (source === 'bank') {
+      if (assignmentMode === 'timed' && !durationMinutes) {
+        throw new BadRequestException('durationMinutes is required for timed assignments');
+      }
+
+      const bankItems = await this.questionBanksService.resolveItemsForAssignment(
+        teacherId,
+        classroomId,
+        dto.bankItemIds ?? [],
+      );
+
+      const session = await this.examGenieService.createQuizSessionFromBankItems({
+        ownerId: teacherId,
+        subject: dto.subject,
+        classGrade: classroom.classGrade || '9',
+        board: classroom.board || 'Punjab Board',
+        chapterStart: dto.chapterStart,
+        chapterEnd: dto.chapterEnd,
+        items: bankItems,
+        bankItemIds: dto.bankItemIds ?? [],
+      });
+
+      const assignment = await this.prisma.classAssignment.create({
+        data: {
+          classroomId,
+          teacherId,
+          quizSessionId: session.id,
+          title: dto.title,
+          instructions: dto.instructions,
+          assignmentMode,
+          durationMinutes: assignmentMode === 'timed' ? durationMinutes : null,
+          dueAt,
+          publishAt,
+          proctoringEnabled,
+          allowReviewAfterSubmit: dto.allowReviewAfterSubmit ?? true,
+        },
+        include: {
+          quizSession: {
+            select: {
+              id: true,
+              subject: true,
+              questionCount: true,
+              quizType: true,
+            },
+          },
+        },
+      });
+
+      await this.notifyAssignmentIfPublished(assignment, classroom);
+      return { success: true, assignment };
+    }
 
     let patternSections: any[] | undefined;
     let patternName: string | undefined;
@@ -565,7 +717,19 @@ export class ClassroomsService {
     let quizType = dto.quizType ?? 'mcq';
 
     if (dto.patternId) {
-      const pattern = await this.patternsService.getPatternById(dto.patternId, teacherId);
+      const classroom = await this.prisma.classroom.findUnique({
+        where: { id: classroomId },
+        select: { classGrade: true, board: true },
+      });
+      const pattern = await this.patternsService.resolvePatternForAssignment(
+        teacherId,
+        dto.patternId,
+        dto.subject,
+        {
+          classGrade: classroom?.classGrade ?? undefined,
+          board: classroom?.board ?? undefined,
+        },
+      );
       patternSections = (pattern.sections as any[]) || [];
       patternName = pattern.name;
       patternTotalMarks = pattern.totalMarks;
@@ -578,7 +742,9 @@ export class ClassroomsService {
         durationMinutes = pattern.duration;
       }
       quizType = 'all';
-      await this.patternsService.markAsUsed(dto.patternId, teacherId);
+      if (!pattern.isBuiltIn) {
+        await this.patternsService.markAsUsed(dto.patternId, teacherId);
+      }
     }
 
     if (assignmentMode === 'timed' && !durationMinutes) {
@@ -616,7 +782,9 @@ export class ClassroomsService {
         instructions: dto.instructions,
         assignmentMode,
         durationMinutes: assignmentMode === 'timed' ? durationMinutes : null,
-        dueAt: dto.dueAt ? new Date(dto.dueAt) : null,
+        dueAt,
+        publishAt,
+        proctoringEnabled,
         allowReviewAfterSubmit: dto.allowReviewAfterSubmit ?? true,
       },
       include: {
@@ -631,7 +799,7 @@ export class ClassroomsService {
       },
     });
 
-    await this.notificationsService.notifyNewAssignment(assignment, classroom);
+    await this.notifyAssignmentIfPublished(assignment, classroom);
 
     return { success: true, assignment };
   }
@@ -664,6 +832,16 @@ export class ClassroomsService {
       durationMinutes = null;
     }
 
+    const publishAt = dto.publishAt
+      ? this.parseOptionalDate(dto.publishAt, 'publishAt')
+      : source.publishAt;
+    const dueAt = dto.dueAt ? new Date(dto.dueAt) : null;
+    this.validateAssignmentSchedule(publishAt, dueAt);
+    const proctoringEnabled = this.resolveProctoringEnabled(
+      assignmentMode,
+      dto.proctoringEnabled ?? source.proctoringEnabled,
+    );
+
     const assignment = await this.prisma.classAssignment.create({
       data: {
         classroomId,
@@ -673,7 +851,9 @@ export class ClassroomsService {
         instructions: source.instructions,
         assignmentMode,
         durationMinutes: assignmentMode === 'timed' ? durationMinutes : null,
-        dueAt: dto.dueAt ? new Date(dto.dueAt) : null,
+        dueAt,
+        publishAt,
+        proctoringEnabled,
         allowReviewAfterSubmit: source.allowReviewAfterSubmit,
       },
       include: {
@@ -693,7 +873,7 @@ export class ClassroomsService {
       select: { id: true, name: true },
     });
     if (classroom) {
-      await this.notificationsService.notifyNewAssignment(assignment, classroom);
+      await this.notifyAssignmentIfPublished(assignment, classroom);
     }
 
     return { success: true, assignment };
@@ -746,6 +926,8 @@ export class ClassroomsService {
         assignmentMode: assignment.assignmentMode,
         durationMinutes: assignment.durationMinutes,
         dueAt: assignment.dueAt,
+        publishAt: assignment.publishAt,
+        proctoringEnabled: assignment.proctoringEnabled,
         allowReviewAfterSubmit: assignment.allowReviewAfterSubmit,
       },
       timing,

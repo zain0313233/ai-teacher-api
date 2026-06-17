@@ -8,6 +8,8 @@ import {
   IsDateString,
   ValidateIf,
   IsBoolean,
+  IsArray,
+  ArrayMinSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -71,6 +73,25 @@ export class CreateAssignmentDto {
   dueAt?: string;
 
   @IsOptional()
+  @IsDateString()
+  publishAt?: string;
+
+  @IsOptional()
   @IsBoolean()
   allowReviewAfterSubmit?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  proctoringEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['ai', 'bank'])
+  source?: 'ai' | 'bank';
+
+  @ValidateIf((o) => o.source === 'bank')
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  bankItemIds?: string[];
 }

@@ -10,13 +10,17 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ExamGenieService } from './exam-genie.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
 import { SubmitQuizDto } from './dto/submit-quiz.dto';
 
 @Controller('exam-genie')
 @UseGuards(JwtAuthGuard)
 export class ExamGenieController {
-  constructor(private readonly examGenieService: ExamGenieService) {}
+  constructor(
+    private readonly examGenieService: ExamGenieService,
+    private readonly analyticsService: AnalyticsService,
+  ) {}
 
   @Get('materials')
   getMaterials(@Request() req, @Query('subject') subject?: string) {
@@ -49,6 +53,11 @@ export class ExamGenieController {
   @Get('weak-topics')
   getWeakTopics(@Request() req, @Query('subject') subject?: string) {
     return this.examGenieService.getWeakTopicRecommendations(req.user.id, subject);
+  }
+
+  @Get('analytics')
+  getStudentAnalytics(@Request() req) {
+    return this.analyticsService.getStudentSubjectAnalytics(req.user.id);
   }
 
   @Post('quizzes/generate')

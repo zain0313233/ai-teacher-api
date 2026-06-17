@@ -49,6 +49,25 @@ export declare class DocumentsController {
         }[];
         documentsFound: boolean;
     }>;
+    getOfficialLibrary(subject?: string, board?: string, language?: string, search?: string): Promise<{
+        success: boolean;
+        documents: {
+            id: string;
+            board: string | null;
+            year: number | null;
+            documentType: string;
+            educationSystem: string;
+            level: string;
+            class: string | null;
+            subject: string | null;
+            language: string;
+            fileName: string;
+            chapterNumber: number | null;
+            chapterName: string | null;
+            uploadDate: Date;
+        }[];
+        count: number;
+    }>;
     getUserDocuments(req: any): Promise<{
         id: string;
         board: string | null;

@@ -1,9 +1,11 @@
 import { ExamGenieService } from './exam-genie.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
 import { SubmitQuizDto } from './dto/submit-quiz.dto';
 export declare class ExamGenieController {
     private readonly examGenieService;
-    constructor(examGenieService: ExamGenieService);
+    private readonly analyticsService;
+    constructor(examGenieService: ExamGenieService, analyticsService: AnalyticsService);
     getMaterials(req: any, subject?: string): Promise<{
         success: boolean;
         documents: {
@@ -92,7 +94,7 @@ export declare class ExamGenieController {
             totalMarks: number;
             duration: number;
             sections: unknown;
-            source: "builtin" | "teacher";
+            source: "builtin" | "teacher" | "saved";
         }[];
     }>;
     getWeakTopics(req: any, subject?: string): Promise<{
@@ -108,6 +110,34 @@ export declare class ExamGenieController {
             recommendation: string;
         }[];
         summary: string;
+    }>;
+    getStudentAnalytics(req: any): Promise<{
+        success: boolean;
+        overall: {
+            totalAttempts: number;
+            avgScore: number | null;
+            benchmarkTarget: number;
+            board: string | null;
+            message: string;
+        };
+        subjects: {
+            weakTopics: import("../analytics/analytics.helpers").TopicWeaknessRow[];
+            benchmarkTarget: number;
+            vsBenchmark: number | null;
+            subject: string;
+            attemptCount: number;
+            avgScore: number;
+            bestScore: number;
+            latestScore: number | null;
+            strength: "moderate" | "strong" | "weak";
+        }[];
+        weakTopics: import("../analytics/analytics.helpers").TopicWeaknessRow[];
+        scoreTrend: {
+            label: string;
+            subject: string;
+            score: number;
+            completedAt: Date | null;
+        }[];
     }>;
     generateQuiz(req: any, dto: GenerateQuizDto): Promise<{
         success: boolean;

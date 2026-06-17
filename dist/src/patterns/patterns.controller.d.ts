@@ -34,6 +34,18 @@ export declare class PatternsController {
         avgMarks: number;
         avgDuration: string;
     }>;
+    getAvailablePatterns(req: any, subject: string, classGrade?: string, board?: string): Promise<{
+        success: boolean;
+        patterns: {
+            id: string;
+            name: string;
+            subject: string;
+            totalMarks: number;
+            duration: number;
+            sections: unknown;
+            source: "builtin" | "teacher" | "saved";
+        }[];
+    }>;
     getPattern(req: any, id: string): Promise<{
         name: string;
         id: string;

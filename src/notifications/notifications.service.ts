@@ -211,6 +211,7 @@ export class NotificationsService {
       where: {
         status: 'active',
         dueAt: { gt: now, lte: in24h },
+        OR: [{ publishAt: null }, { publishAt: { lte: now } }],
       },
       include: {
         classroom: { select: { id: true, name: true } },
@@ -291,6 +292,41 @@ export class NotificationsService {
 
     if (sent > 0) {
       console.log(`📬 Sent ${sent} assignment due reminder(s)`);
+    }
+    return sent;
+  }
+
+  async processScheduledPublications() {
+    const now = new Date();
+
+    const assignments = await this.prisma.classAssignment.findMany({
+      where: {
+        status: 'active',
+        publishNotifiedAt: null,
+        OR: [{ publishAt: null }, { publishAt: { lte: now } }],
+      },
+      include: {
+        classroom: { select: { id: true, name: true } },
+      },
+    });
+
+    let sent = 0;
+
+    for (const assignment of assignments) {
+      if (assignment.publishAt && assignment.publishAt > now) {
+        continue;
+      }
+
+      await this.notifyNewAssignment(assignment, assignment.classroom);
+      await this.prisma.classAssignment.update({
+        where: { id: assignment.id },
+        data: { publishNotifiedAt: new Date() },
+      });
+      sent += 1;
+    }
+
+    if (sent > 0) {
+      console.log(`📬 Published ${sent} scheduled assignment(s)`);
     }
     return sent;
   }

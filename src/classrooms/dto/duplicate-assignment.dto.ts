@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDateString, IsIn, IsInt, IsOptional, IsString, Max, Min, ValidateIf } from 'class-validator';
+import { IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, Max, Min, ValidateIf } from 'class-validator';
 
 export class DuplicateAssignmentDto {
   @IsOptional()
@@ -9,6 +9,14 @@ export class DuplicateAssignmentDto {
   @IsOptional()
   @IsDateString()
   dueAt?: string;
+
+  @IsOptional()
+  @IsDateString()
+  publishAt?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  proctoringEnabled?: boolean;
 
   @IsOptional()
   @IsString()

@@ -35,6 +35,22 @@ let PatternsController = class PatternsController {
         const stats = await this.patternsService.getPatternStats(req.user.id);
         return stats;
     }
+    async getAvailablePatterns(req, subject, classGrade, board) {
+        if (!subject?.trim()) {
+            return { success: true, patterns: [] };
+        }
+        if (req.user.role === 'TEACHER') {
+            return this.patternsService.getAvailablePatternsForTeacher(req.user.id, subject, {
+                classGrade,
+                board,
+            });
+        }
+        return this.patternsService.getAvailablePatternsForContext(req.user.id, subject, {
+            classGrade,
+            board,
+            includeTeacherPatterns: req.user.role === 'USER',
+        });
+    }
     async getPattern(req, id) {
         const pattern = await this.patternsService.getPatternById(id, req.user.id);
         return pattern;
@@ -93,6 +109,16 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], PatternsController.prototype, "getPatternStats", null);
+__decorate([
+    (0, common_1.Get)('available'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('subject')),
+    __param(2, (0, common_1.Query)('classGrade')),
+    __param(3, (0, common_1.Query)('board')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String]),
+    __metadata("design:returntype", Promise)
+], PatternsController.prototype, "getAvailablePatterns", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Request)()),

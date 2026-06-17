@@ -4,9 +4,10 @@ import { ExamGenieService } from './exam-genie.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PastPapersModule } from '../past-papers/past-papers.module';
 import { PatternsModule } from '../patterns/patterns.module';
+import { AnalyticsModule } from '../analytics/analytics.module';
 
 @Module({
-  imports: [PrismaModule, PastPapersModule, PatternsModule],
+  imports: [PrismaModule, PastPapersModule, PatternsModule, AnalyticsModule],
   controllers: [ExamGenieController],
   providers: [ExamGenieService],
   exports: [ExamGenieService],

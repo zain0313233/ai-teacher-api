@@ -28,6 +28,14 @@ let NotificationsScheduler = NotificationsScheduler_1 = class NotificationsSched
             this.logger.error(`Due reminder job failed: ${error.message}`);
         }
     }
+    async handleScheduledPublications() {
+        try {
+            await this.notificationsService.processScheduledPublications();
+        }
+        catch (error) {
+            this.logger.error(`Scheduled publication job failed: ${error.message}`);
+        }
+    }
 };
 exports.NotificationsScheduler = NotificationsScheduler;
 __decorate([
@@ -36,6 +44,12 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], NotificationsScheduler.prototype, "handleDueReminders", null);
+__decorate([
+    (0, schedule_1.Cron)('*/10 * * * *'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], NotificationsScheduler.prototype, "handleScheduledPublications", null);
 exports.NotificationsScheduler = NotificationsScheduler = NotificationsScheduler_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [notifications_service_1.NotificationsService])

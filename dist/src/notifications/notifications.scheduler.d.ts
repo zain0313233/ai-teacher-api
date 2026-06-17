@@ -4,4 +4,5 @@ export declare class NotificationsScheduler {
     private readonly logger;
     constructor(notificationsService: NotificationsService);
     handleDueReminders(): Promise<void>;
+    handleScheduledPublications(): Promise<void>;
 }

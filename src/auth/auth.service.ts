@@ -14,6 +14,9 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import * as crypto from 'crypto';
 
+const RESEND_OTP_COOLDOWN_MS = 60 * 1000;
+const FORGOT_PASSWORD_COOLDOWN_MS = 60 * 1000;
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -135,6 +138,39 @@ export class AuthService {
     return { message: 'Email verified successfully' };
   }
 
+  async getVerificationStatus(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, isVerified: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('No account found with this email');
+    }
+
+    return {
+      needsVerification: !user.isVerified,
+      userId: user.isVerified ? undefined : user.id,
+    };
+  }
+
+  private async assertResendCooldown(userId: string) {
+    const latestOtp = await this.prisma.otpCode.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (latestOtp) {
+      const elapsed = Date.now() - latestOtp.createdAt.getTime();
+      if (elapsed < RESEND_OTP_COOLDOWN_MS) {
+        const waitSec = Math.ceil((RESEND_OTP_COOLDOWN_MS - elapsed) / 1000);
+        throw new BadRequestException(
+          `Please wait ${waitSec} seconds before requesting a new code`,
+        );
+      }
+    }
+  }
+
   async resendOtp(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -147,6 +183,8 @@ export class AuthService {
     if (user.isVerified) {
       throw new BadRequestException('Email already verified');
     }
+
+    await this.assertResendCooldown(userId);
 
     // Delete old OTPs
     await this.prisma.otpCode.deleteMany({
@@ -187,7 +225,11 @@ export class AuthService {
     }
 
     if (!user.isVerified) {
-      throw new UnauthorizedException('Please verify your email first');
+      throw new UnauthorizedException({
+        message: 'Please verify your email first',
+        code: 'EMAIL_NOT_VERIFIED',
+        userId: user.id,
+      });
     }
 
     const accessToken = this.generateAccessToken(user.id, user.role);
@@ -230,6 +272,21 @@ export class AuthService {
       return { message: 'If email exists, reset link has been sent' };
     }
 
+    const latestReset = await this.prisma.passwordReset.findFirst({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (latestReset) {
+      const elapsed = Date.now() - latestReset.createdAt.getTime();
+      if (elapsed < FORGOT_PASSWORD_COOLDOWN_MS) {
+        const waitSec = Math.ceil((FORGOT_PASSWORD_COOLDOWN_MS - elapsed) / 1000);
+        throw new BadRequestException(
+          `Please wait ${waitSec} seconds before requesting another reset link`,
+        );
+      }
+    }
+
     const resetToken = crypto.randomBytes(32).toString('hex');
 
     await this.prisma.passwordReset.deleteMany({
@@ -249,6 +306,22 @@ export class AuthService {
     return { message: 'If email exists, reset link has been sent' };
   }
 
+  async getResetTokenStatus(token: string) {
+    const resetRecord = await this.prisma.passwordReset.findUnique({
+      where: { token },
+    });
+
+    if (!resetRecord) {
+      return { valid: false, reason: 'INVALID' as const };
+    }
+
+    if (resetRecord.expiresAt < new Date()) {
+      return { valid: false, reason: 'EXPIRED' as const };
+    }
+
+    return { valid: true };
+  }
+
   async resetPassword(token: string, newPassword: string) {
     const resetRecord = await this.prisma.passwordReset.findUnique({
       where: { token },
@@ -256,12 +329,18 @@ export class AuthService {
     });
 
     if (!resetRecord) {
-      throw new BadRequestException('Invalid or expired reset token');
+      throw new BadRequestException({
+        message: 'This reset link is invalid or has already been used',
+        code: 'RESET_TOKEN_INVALID',
+      });
     }
 
     if (resetRecord.expiresAt < new Date()) {
       await this.prisma.passwordReset.delete({ where: { token } });
-      throw new BadRequestException('Reset token expired');
+      throw new BadRequestException({
+        message: 'This reset link has expired. Please request a new one.',
+        code: 'RESET_TOKEN_EXPIRED',
+      });
     }
 
     const hashedPassword = await hashPassword(newPassword);

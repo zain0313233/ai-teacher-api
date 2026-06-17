@@ -26,6 +26,7 @@ const classrooms_module_1 = require("./classrooms/classrooms.module");
 const notifications_module_1 = require("./notifications/notifications.module");
 const realtime_module_1 = require("./realtime/realtime.module");
 const class_chat_module_1 = require("./class-chat/class-chat.module");
+const question_banks_module_1 = require("./question-banks/question-banks.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -50,6 +51,7 @@ exports.AppModule = AppModule = __decorate([
             notifications_module_1.NotificationsModule,
             realtime_module_1.RealtimeModule,
             class_chat_module_1.ClassChatModule,
+            question_banks_module_1.QuestionBanksModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

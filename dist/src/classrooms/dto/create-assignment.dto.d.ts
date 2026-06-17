@@ -11,5 +11,9 @@ export declare class CreateAssignmentDto {
     assignmentMode?: string;
     durationMinutes?: number;
     dueAt?: string;
+    publishAt?: string;
     allowReviewAfterSubmit?: boolean;
+    proctoringEnabled?: boolean;
+    source?: 'ai' | 'bank';
+    bankItemIds?: string[];
 }

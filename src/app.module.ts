@@ -17,6 +17,7 @@ import { ClassroomsModule } from './classrooms/classrooms.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { ClassChatModule } from './class-chat/class-chat.module';
+import { QuestionBanksModule } from './question-banks/question-banks.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { ClassChatModule } from './class-chat/class-chat.module';
     NotificationsModule,
     RealtimeModule,
     ClassChatModule,
+    QuestionBanksModule,
   ],
   controllers: [AppController],
   providers: [AppService],

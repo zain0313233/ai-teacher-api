@@ -18,6 +18,7 @@ const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/decorators/roles.decorator");
 const classrooms_service_1 = require("./classrooms.service");
+const analytics_service_1 = require("../analytics/analytics.service");
 const create_classroom_dto_1 = require("./dto/create-classroom.dto");
 const join_classroom_dto_1 = require("./dto/join-classroom.dto");
 const share_material_dto_1 = require("./dto/share-material.dto");
@@ -26,8 +27,10 @@ const duplicate_assignment_dto_1 = require("./dto/duplicate-assignment.dto");
 const submit_quiz_dto_1 = require("../exam-genie/dto/submit-quiz.dto");
 let ClassroomsController = class ClassroomsController {
     classroomsService;
-    constructor(classroomsService) {
+    analyticsService;
+    constructor(classroomsService, analyticsService) {
         this.classroomsService = classroomsService;
+        this.analyticsService = analyticsService;
     }
     createClassroom(req, dto) {
         return this.classroomsService.createClassroom(req.user.id, dto);
@@ -40,6 +43,9 @@ let ClassroomsController = class ClassroomsController {
     }
     getClassroomReport(req, id) {
         return this.classroomsService.getClassroomReport(req.user.id, id);
+    }
+    getClassroomAnalytics(req, id) {
+        return this.analyticsService.getClassroomAnalytics(req.user.id, id);
     }
     shareMaterial(req, id, dto) {
         return this.classroomsService.shareMaterial(req.user.id, id, dto);
@@ -112,6 +118,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], ClassroomsController.prototype, "getClassroomReport", null);
+__decorate([
+    (0, common_1.Get)('teacher/:id/analytics'),
+    (0, roles_decorator_1.Roles)('TEACHER'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], ClassroomsController.prototype, "getClassroomAnalytics", null);
 __decorate([
     (0, common_1.Post)('teacher/:id/materials'),
     (0, roles_decorator_1.Roles)('TEACHER'),
@@ -209,6 +224,7 @@ __decorate([
 exports.ClassroomsController = ClassroomsController = __decorate([
     (0, common_1.Controller)('classrooms'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
-    __metadata("design:paramtypes", [classrooms_service_1.ClassroomsService])
+    __metadata("design:paramtypes", [classrooms_service_1.ClassroomsService,
+        analytics_service_1.AnalyticsService])
 ], ClassroomsController);
 //# sourceMappingURL=classrooms.controller.js.map

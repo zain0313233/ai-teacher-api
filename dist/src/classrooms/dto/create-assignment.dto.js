@@ -25,7 +25,11 @@ class CreateAssignmentDto {
     assignmentMode;
     durationMinutes;
     dueAt;
+    publishAt;
     allowReviewAfterSubmit;
+    proctoringEnabled;
+    source;
+    bankItemIds;
 }
 exports.CreateAssignmentDto = CreateAssignmentDto;
 __decorate([
@@ -100,7 +104,30 @@ __decorate([
 ], CreateAssignmentDto.prototype, "dueAt", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsDateString)(),
+    __metadata("design:type", String)
+], CreateAssignmentDto.prototype, "publishAt", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], CreateAssignmentDto.prototype, "allowReviewAfterSubmit", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], CreateAssignmentDto.prototype, "proctoringEnabled", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsIn)(['ai', 'bank']),
+    __metadata("design:type", String)
+], CreateAssignmentDto.prototype, "source", void 0);
+__decorate([
+    (0, class_validator_1.ValidateIf)((o) => o.source === 'bank'),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ArrayMinSize)(1),
+    (0, class_validator_1.IsString)({ each: true }),
+    __metadata("design:type", Array)
+], CreateAssignmentDto.prototype, "bankItemIds", void 0);
 //# sourceMappingURL=create-assignment.dto.js.map

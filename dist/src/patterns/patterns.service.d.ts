@@ -1,6 +1,7 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePatternDto } from './dto/create-pattern.dto';
 import { UpdatePatternDto } from './dto/update-pattern.dto';
+import { PatternDataDef } from './board-templates';
 interface PatternSection {
     name: string;
     questionType: 'MCQ' | 'Short Answer' | 'Long Answer' | 'Case Study' | 'Practical' | 'Essay' | 'Numerical';
@@ -150,6 +151,54 @@ export declare class PatternsService {
     private recalculateMarks;
     private generateCustomPattern;
     questionCountFromSections(sections: any[]): number;
+    private lookupBuiltInPatternTemplate;
+    private toBuiltInPatternListItem;
+    getBuiltInPatternsForContext(board: string | null | undefined, subject: string, classLevel: string | null | undefined): Promise<{
+        id: string;
+        name: string;
+        subject: string;
+        totalMarks: number;
+        duration: number;
+        sections: import("./pecta-templates").PatternSectionDef[];
+        source: "builtin";
+    }[]>;
+    resolveBuiltInPattern(patternId: string, board: string | null | undefined, subject: string, classLevel: string | null | undefined): Promise<PatternDataDef | null>;
+    getAvailablePatternsForContext(userId: string, subject: string, options?: {
+        classGrade?: string;
+        board?: string;
+        includeTeacherPatterns?: boolean;
+    }): Promise<{
+        success: boolean;
+        patterns: {
+            id: string;
+            name: string;
+            subject: string;
+            totalMarks: number;
+            duration: number;
+            sections: unknown;
+            source: "builtin" | "teacher" | "saved";
+        }[];
+    }>;
+    resolvePatternForAssignment(userId: string, patternId: string, subject: string, options?: {
+        classGrade?: string;
+        board?: string;
+    }): Promise<{
+        patternId: string;
+        name: string;
+        subject: string;
+        totalMarks: number;
+        duration: number;
+        sections: import("./pecta-templates").PatternSectionDef[];
+        isBuiltIn: boolean;
+    } | {
+        patternId: string;
+        name: string;
+        subject: string;
+        totalMarks: number;
+        duration: number;
+        sections: import("@prisma/client/runtime/client").JsonValue;
+        isBuiltIn: boolean;
+    }>;
     private builtInPatternId;
     getAvailablePatternsForStudent(userId: string, subject: string): Promise<{
         success: boolean;
@@ -160,7 +209,22 @@ export declare class PatternsService {
             totalMarks: number;
             duration: number;
             sections: unknown;
-            source: "builtin" | "teacher";
+            source: "builtin" | "teacher" | "saved";
+        }[];
+    }>;
+    getAvailablePatternsForTeacher(userId: string, subject: string, options?: {
+        classGrade?: string;
+        board?: string;
+    }): Promise<{
+        success: boolean;
+        patterns: {
+            id: string;
+            name: string;
+            subject: string;
+            totalMarks: number;
+            duration: number;
+            sections: unknown;
+            source: "builtin" | "teacher" | "saved";
         }[];
     }>;
     resolvePatternForStudentQuiz(userId: string, patternId: string, subject: string): Promise<{

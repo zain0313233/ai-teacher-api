@@ -13,12 +13,13 @@ const exam_genie_service_1 = require("./exam-genie.service");
 const prisma_module_1 = require("../prisma/prisma.module");
 const past_papers_module_1 = require("../past-papers/past-papers.module");
 const patterns_module_1 = require("../patterns/patterns.module");
+const analytics_module_1 = require("../analytics/analytics.module");
 let ExamGenieModule = class ExamGenieModule {
 };
 exports.ExamGenieModule = ExamGenieModule;
 exports.ExamGenieModule = ExamGenieModule = __decorate([
     (0, common_1.Module)({
-        imports: [prisma_module_1.PrismaModule, past_papers_module_1.PastPapersModule, patterns_module_1.PatternsModule],
+        imports: [prisma_module_1.PrismaModule, past_papers_module_1.PastPapersModule, patterns_module_1.PatternsModule, analytics_module_1.AnalyticsModule],
         controllers: [exam_genie_controller_1.ExamGenieController],
         providers: [exam_genie_service_1.ExamGenieService],
         exports: [exam_genie_service_1.ExamGenieService],
