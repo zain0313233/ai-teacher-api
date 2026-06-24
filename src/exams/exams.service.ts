@@ -1,5 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+  GoneException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { SupabaseService } from '../documents/supabase.service';
 import { GenerateExamDto } from './dto/generate-exam.dto';
 import axios from 'axios';
 
@@ -7,55 +13,15 @@ import axios from 'axios';
 export class ExamsService {
   private readonly fastApiUrl = process.env.FASTAPI_URL || 'http://localhost:8000';
   
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private supabaseService: SupabaseService,
+  ) {}
 
-  async generateExam(userId: string, generateExamDto: GenerateExamDto) {
-    try {
-      // Call FastAPI to generate exam using RAG + Grok AI
-      const response = await axios.post(`${this.fastApiUrl}/exams/generate`, {
-        user_id: userId,
-        subject: generateExamDto.subject,
-        exam_type: generateExamDto.examType,
-        topics: generateExamDto.topics,
-        structure: generateExamDto.structure,
-      });
-
-      // Save generated exam to database
-      const exam = await this.prisma.exam.create({
-        data: {
-          userId,
-          subject: generateExamDto.subject,
-          class: '',
-          section: '',
-          examType: generateExamDto.examType,
-          topics: generateExamDto.topics,
-          examContent: response.data.exam_content,
-        },
-      });
-
-      return exam;
-    } catch (error) {
-      console.error('FastAPI exam generation error:', error.message);
-      
-      // Fallback: create placeholder exam if FastAPI fails
-      const exam = await this.prisma.exam.create({
-        data: {
-          userId,
-          subject: generateExamDto.subject,
-          class: '',
-          section: '',
-          examType: generateExamDto.examType,
-          topics: generateExamDto.topics,
-          examContent: {
-            structure: generateExamDto.structure,
-            questions: [],
-            error: 'AI engine unavailable',
-          },
-        },
-      });
-
-      return exam;
-    }
+  async generateExam(_userId: string, _generateExamDto: GenerateExamDto) {
+    throw new GoneException(
+      'POST /exams/generate is deprecated. Use POST /exams/generate-with-documents instead.',
+    );
   }
 
   async getUserExams(userId: string) {
@@ -118,14 +84,33 @@ export class ExamsService {
           chapter_end: examData.chapterEnd,
           include_answer_layout: examData.includeAnswerKeyLayout,
           time_allowed: examData.timeAllowed,
-          use_past_paper_intelligence: examData.usePastPaperIntelligence || false,
-          generation_mode: examData.generationMode || 'normal',
+          use_past_paper_intelligence: examData.usePastPaperIntelligence ?? true,
+          generation_mode: examData.generationMode ?? 'smart',
         },
         {
           responseType: 'arraybuffer',
-          timeout: 120000, // 2 minutes
+          timeout: 600000, // 10 minutes — full exam generation can exceed 2 min
         }
       );
+
+      const fileBuffer = Buffer.from(response.data);
+      const fallbackName = this.buildExamFileName(examData.subject, examData.class, examData.examType);
+      const fileName = this.extractFileName(response.headers['content-disposition'], fallbackName);
+      const contentType =
+        response.headers['content-type'] ||
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+      let fileUrl: string | null = null;
+      try {
+        fileUrl = await this.supabaseService.uploadBuffer(
+          fileBuffer,
+          fileName,
+          contentType,
+          'exams',
+        );
+      } catch (uploadErr: any) {
+        console.warn('Exam file upload to storage failed (download still works):', uploadErr.message);
+      }
 
       // Save exam record to database
       const exam = await this.prisma.exam.create({
@@ -140,22 +125,32 @@ export class ExamsService {
           patternId: examData.patternId,
           topics: examData.topics || [],
           examContent: {},
-          fileUrls: [], // Will be updated after Cloudinary upload
+          fileUrls: fileUrl ? [fileUrl] : [],
         },
       });
-
-      // Build a descriptive fallback filename from exam data
-      const fallbackName = this.buildExamFileName(examData.subject, examData.class, examData.examType);
 
       // Return the file buffer and exam ID
       return {
         examId: exam.id,
-        fileBuffer: response.data,
-        contentType: response.headers['content-type'],
-        fileName: this.extractFileName(response.headers['content-disposition'], fallbackName),
+        fileBuffer,
+        contentType,
+        fileName,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('FastAPI exam generation error:', error.message);
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+      if (status === 422 && data) {
+        let detail = 'Exam generation failed';
+        try {
+          const text = Buffer.isBuffer(data) ? data.toString('utf8') : JSON.stringify(data);
+          const parsed = JSON.parse(text);
+          detail = parsed.detail || parsed.message || detail;
+        } catch {
+          /* use default */
+        }
+        throw new UnprocessableEntityException(detail);
+      }
       throw error;
     }
   }
@@ -164,6 +159,57 @@ export class ExamsService {
     if (!contentDisposition) return fallback;
     const match = contentDisposition.match(/filename="?([^"]+)"?/);
     return match ? match[1] : fallback;
+  }
+
+  /** Persist exam produced by AI Exam Assistant (base64 file from chat). */
+  async persistChatGeneratedExam(
+    userId: string,
+    meta: {
+      subject: string;
+      class: string;
+      section?: string;
+      examType: string;
+      chapterStart?: number | null;
+      chapterEnd?: number | null;
+      patternId?: string | null;
+      topics?: string[];
+    },
+    file: { filename: string; dataBase64: string },
+  ): Promise<{ examId: string; fileUrl: string | null }> {
+    const buffer = Buffer.from(file.dataBase64, 'base64');
+    const fileName = file.filename || this.buildExamFileName(meta.subject, meta.class, meta.examType);
+    const contentType =
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+    let fileUrl: string | null = null;
+    try {
+      fileUrl = await this.supabaseService.uploadBuffer(
+        buffer,
+        fileName,
+        contentType,
+        'exams',
+      );
+    } catch (uploadErr: any) {
+      console.warn('Chat exam upload failed:', uploadErr.message);
+    }
+
+    const exam = await this.prisma.exam.create({
+      data: {
+        userId,
+        subject: meta.subject,
+        class: meta.class,
+        section: meta.section || 'A',
+        examType: meta.examType,
+        chapterStart: meta.chapterStart ?? null,
+        chapterEnd: meta.chapterEnd ?? null,
+        patternId: meta.patternId ?? null,
+        topics: meta.topics || [],
+        examContent: {},
+        fileUrls: fileUrl ? [fileUrl] : [],
+      },
+    });
+
+    return { examId: exam.id, fileUrl };
   }
 
   private buildExamFileName(subject: string, className: string, examType: string): string {

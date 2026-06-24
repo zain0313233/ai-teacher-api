@@ -35,6 +35,22 @@ let PatternsController = class PatternsController {
         const stats = await this.patternsService.getPatternStats(req.user.id);
         return stats;
     }
+    async getAvailablePatterns(req, subject, classGrade, board) {
+        if (!subject?.trim()) {
+            return { success: true, patterns: [] };
+        }
+        if (req.user.role === 'TEACHER') {
+            return this.patternsService.getAvailablePatternsForTeacher(req.user.id, subject, {
+                classGrade,
+                board,
+            });
+        }
+        return this.patternsService.getAvailablePatternsForContext(req.user.id, subject, {
+            classGrade,
+            board,
+            includeTeacherPatterns: req.user.role === 'USER',
+        });
+    }
     async getPattern(req, id) {
         const pattern = await this.patternsService.getPatternById(id, req.user.id);
         return pattern;
@@ -51,8 +67,12 @@ let PatternsController = class PatternsController {
         await this.patternsService.markAsUsed(id, req.user.id);
         return { message: 'Pattern marked as used' };
     }
+    async previewPatternWithAI(req, body) {
+        const result = await this.patternsService.previewPatternWithAI(req.user.id, body.prompt);
+        return result;
+    }
     async createPatternWithAI(req, body) {
-        const result = await this.patternsService.createPatternWithAI(req.user.id, body.prompt);
+        const result = await this.patternsService.createPatternWithAI(req.user.id, body.prompt, body.save !== false);
         return result;
     }
     async listTemplates(board, subject, verified) {
@@ -90,6 +110,16 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], PatternsController.prototype, "getPatternStats", null);
 __decorate([
+    (0, common_1.Get)('available'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('subject')),
+    __param(2, (0, common_1.Query)('classGrade')),
+    __param(3, (0, common_1.Query)('board')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String]),
+    __metadata("design:returntype", Promise)
+], PatternsController.prototype, "getAvailablePatterns", null);
+__decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id')),
@@ -122,6 +152,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], PatternsController.prototype, "markPatternAsUsed", null);
+__decorate([
+    (0, common_1.Post)('preview-with-ai'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], PatternsController.prototype, "previewPatternWithAI", null);
 __decorate([
     (0, common_1.Post)('create-with-ai'),
     __param(0, (0, common_1.Request)()),

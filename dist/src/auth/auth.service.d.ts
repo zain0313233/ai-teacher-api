@@ -11,9 +11,9 @@ export declare class AuthService {
     private emailService;
     constructor(prisma: PrismaService, jwtService: JwtService, configService: ConfigService, emailService: EmailService);
     register(registerDto: RegisterDto): Promise<{
+        name: string;
         id: string;
         email: string;
-        name: string;
         role: import("@prisma/client").$Enums.UserRole;
         plan: import("@prisma/client").$Enums.PlanType;
         isVerified: boolean;
@@ -22,6 +22,11 @@ export declare class AuthService {
     verifyEmail(userId: string, otp: string): Promise<{
         message: string;
     }>;
+    getVerificationStatus(email: string): Promise<{
+        needsVerification: boolean;
+        userId: string | undefined;
+    }>;
+    private assertResendCooldown;
     resendOtp(userId: string): Promise<{
         message: string;
     }>;
@@ -50,6 +55,7 @@ export declare class AuthService {
             schoolName: string | null;
             city: string | null;
             userId: string;
+            learningLevel: number;
             onboardingDone: boolean;
         } | {
             id: string;
@@ -68,6 +74,16 @@ export declare class AuthService {
     }>;
     forgotPassword(email: string): Promise<{
         message: string;
+    }>;
+    getResetTokenStatus(token: string): Promise<{
+        valid: boolean;
+        reason: "INVALID";
+    } | {
+        valid: boolean;
+        reason: "EXPIRED";
+    } | {
+        valid: boolean;
+        reason?: undefined;
     }>;
     resetPassword(token: string, newPassword: string): Promise<{
         message: string;

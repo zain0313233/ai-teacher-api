@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 
@@ -7,11 +7,28 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool as any);
 const prisma = new PrismaClient({ adapter });
 
+type BoardConfigSeed = {
+  board: string;
+  country: string;
+  educationLevel: string;
+  minMarks: number;
+  maxMarks: number;
+  defaultMarks: number;
+  defaultDuration: number;
+  subjectMarks: Record<string, number> | null;
+};
+
+function subjectMarksForPrisma(
+  subjectMarks: Record<string, number> | null,
+): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+  return subjectMarks === null ? Prisma.JsonNull : subjectMarks;
+}
+
 // ===== BOARD CONFIGS =====
 // Expected marks ranges per board+level for sanity checking AI output
-const BOARD_CONFIGS = [
+const BOARD_CONFIGS: BoardConfigSeed[] = [
   // Pakistani Boards - SSC (Matric)
-  { board: 'BISE Punjab', country: 'Pakistan', educationLevel: 'secondary', minMarks: 50, maxMarks: 75, defaultMarks: 75, defaultDuration: 160, subjectMarks: { Mathematics: 75, Physics: 75, Chemistry: 75, Biology: 75, English: 75, Urdu: 75, Islamiat: 50, 'Pakistan Studies': 50, 'Computer Science': 75 } },
+  { board: 'BISE Punjab', country: 'Pakistan', educationLevel: 'secondary', minMarks: 50, maxMarks: 75, defaultMarks: 75, defaultDuration: 160, subjectMarks: { Mathematics: 75, Physics: 60, Chemistry: 60, Biology: 60, English: 75, Urdu: 75, Islamiat: 50, 'Pakistan Studies': 50, 'Computer Science': 75 } },
   { board: 'Federal Board', country: 'Pakistan', educationLevel: 'secondary', minMarks: 50, maxMarks: 75, defaultMarks: 75, defaultDuration: 160, subjectMarks: { Mathematics: 75, Physics: 75, Chemistry: 75, Biology: 75, English: 75, Urdu: 75, Islamiat: 50, 'Pakistan Studies': 50 } },
   { board: 'Sindh Board', country: 'Pakistan', educationLevel: 'secondary', minMarks: 50, maxMarks: 75, defaultMarks: 75, defaultDuration: 160, subjectMarks: null },
   { board: 'KPK Board', country: 'Pakistan', educationLevel: 'secondary', minMarks: 50, maxMarks: 75, defaultMarks: 75, defaultDuration: 160, subjectMarks: null },
@@ -44,18 +61,38 @@ function verifyMarks(name: string, totalMarks: number, sections: any[]): void {
 // All verified ground-truth patterns — EVERY entry is marks-verified
 const PATTERN_TEMPLATES = [
   // ==================================================================
-  // BISE Punjab - SSC (Class 9-10) — Science/Math/CS = 75 marks
-  // MCQ:15×1=15 + Short:9×4=36 + Long:3×8=24 = 75 ✓
+  // BISE Punjab - SSC (Class 9-10) — PECTA Smart Syllabus Science = 60 marks
+  // MCQ:12 + Short Q2/Q3/Q4: 3×(5×2)=30 + Long: 2×9=18 = 60 ✓
   // ==================================================================
-  ...['Mathematics', 'Physics', 'Chemistry', 'Biology', 'Computer Science'].flatMap(sub =>
+  ...['Physics', 'Chemistry', 'Biology'].flatMap(sub =>
+    ['9', '10'].map(cls => {
+      const pecta = {
+        board: 'BISE Punjab', country: 'Pakistan', subject: sub, classLevel: cls,
+        educationLevel: 'secondary',
+        name: `BISE Punjab ${sub} Class ${cls} — PECTA Smart Syllabus (2025–2026)`,
+        totalMarks: 60, duration: 120, isVerified: true, source: 'manual', confidence: 1.0,
+        sections: [
+          { name: 'Section A - Objective (MCQs)', questionType: 'MCQ', numberOfQuestions: 12, questionsToAttempt: 12, marksPerQuestion: 1, notes: 'PECTA: 12 MCQs × 1 mark. Typical — 2 each from Ch.3,4,6; 1 each from Ch.1,2,5,7,8,9.' },
+          { name: 'Q.2 - Short Questions', questionType: 'Short Answer', numberOfQuestions: 8, questionsToAttempt: 5, marksPerQuestion: 2, notes: 'Chapters 1–3: 8 parts (Ch1:3, Ch2:2, Ch3:3). Attempt any 5 × 2 marks.' },
+          { name: 'Q.3 - Short Questions', questionType: 'Short Answer', numberOfQuestions: 8, questionsToAttempt: 5, marksPerQuestion: 2, notes: 'Chapters 4–6: 8 parts (Ch4:3, Ch5:3, Ch6:2). Attempt any 5 × 2 marks.' },
+          { name: 'Q.4 - Short Questions', questionType: 'Short Answer', numberOfQuestions: 8, questionsToAttempt: 5, marksPerQuestion: 2, notes: 'Chapters 7–9: 8 parts (Ch7:3, Ch8:3, Ch9:2). Attempt any 5 × 2 marks.' },
+          { name: 'Section C - Long Questions', questionType: 'Long Answer', numberOfQuestions: 3, questionsToAttempt: 2, marksPerQuestion: 9, notes: 'Q.5 Ch1+2, Q.6 Ch4+6 (or 3+5), Q.7 Ch7+8. Each 9 marks (5+4). Attempt any 2.' },
+        ],
+      };
+      return pecta;
+    })
+  ),
+
+  // BISE Punjab - SSC Math/CS — legacy 75 marks (pre-PECTA style)
+  ...['Mathematics', 'Computer Science'].flatMap(sub =>
     ['9', '10'].map(cls => ({
       board: 'BISE Punjab', country: 'Pakistan', subject: sub, classLevel: cls,
       educationLevel: 'secondary', name: `BISE Punjab ${sub} Class ${cls}`,
       totalMarks: 75, duration: 160, isVerified: true, source: 'manual', confidence: 1.0,
       sections: [
         { name: 'Section A - Objective (MCQs)', questionType: 'MCQ', numberOfQuestions: 15, questionsToAttempt: 15, marksPerQuestion: 1 },
-        { name: 'Section B - Short Questions', questionType: 'Short Answer', numberOfQuestions: 15, questionsToAttempt: 9, marksPerQuestion: 4, notes: `Grouped by chapters with choice.${sub === 'Computer Science' ? ' Includes theory, definitions, short code.' : sub === 'Biology' ? ' Includes diagrams.' : ' Includes conceptual and formula-based questions.'}` },
-        { name: 'Section C - Long Questions', questionType: 'Long Answer', numberOfQuestions: 5, questionsToAttempt: 3, marksPerQuestion: 8, notes: `Each has part (a) and part (b).${sub === 'Biology' ? ' Includes diagrams and labeling.' : sub === 'Computer Science' ? ' Includes programs, flowcharts, algorithms.' : ' Part (a) theory, part (b) numerical.'}` },
+        { name: 'Section B - Short Questions', questionType: 'Short Answer', numberOfQuestions: 15, questionsToAttempt: 9, marksPerQuestion: 4, notes: `Grouped by chapters with choice.${sub === 'Computer Science' ? ' Includes theory, definitions, short code.' : ' Includes proofs and calculations.'}` },
+        { name: 'Section C - Long Questions', questionType: 'Long Answer', numberOfQuestions: 5, questionsToAttempt: 3, marksPerQuestion: 8, notes: `Each has part (a) and part (b).${sub === 'Computer Science' ? ' Includes programs, flowcharts, algorithms.' : ' Detailed proofs and multi-step calculations.'}` },
       ],
     }))
   ),
@@ -258,6 +295,7 @@ async function main() {
 
   // Seed Board Configs
   for (const config of BOARD_CONFIGS) {
+    const subjectMarks = subjectMarksForPrisma(config.subjectMarks);
     await prisma.boardConfig.upsert({
       where: {
         board_country_educationLevel: {
@@ -271,9 +309,18 @@ async function main() {
         maxMarks: config.maxMarks,
         defaultMarks: config.defaultMarks,
         defaultDuration: config.defaultDuration,
-        subjectMarks: config.subjectMarks,
+        subjectMarks,
       },
-      create: config,
+      create: {
+        board: config.board,
+        country: config.country,
+        educationLevel: config.educationLevel,
+        minMarks: config.minMarks,
+        maxMarks: config.maxMarks,
+        defaultMarks: config.defaultMarks,
+        defaultDuration: config.defaultDuration,
+        subjectMarks,
+      },
     });
   }
   console.log(`✅ Seeded ${BOARD_CONFIGS.length} board configs`);

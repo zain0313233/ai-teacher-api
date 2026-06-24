@@ -87,6 +87,30 @@ export declare class DocumentsService {
         interactive: boolean;
         uploadDate: Date;
     }[]>;
+    getOfficialLibrary(filters: {
+        subject?: string;
+        board?: string;
+        language?: string;
+        search?: string;
+    }): Promise<{
+        success: boolean;
+        documents: {
+            id: string;
+            board: string | null;
+            year: number | null;
+            documentType: string;
+            educationSystem: string;
+            level: string;
+            class: string | null;
+            subject: string | null;
+            language: string;
+            fileName: string;
+            chapterNumber: number | null;
+            chapterName: string | null;
+            uploadDate: Date;
+        }[];
+        count: number;
+    }>;
     getDocumentById(documentId: string, userId: string): Promise<{
         id: string;
         board: string | null;
@@ -127,6 +151,31 @@ export declare class DocumentsService {
         message: string;
     }>;
     markAsProcessed(documentId: string): Promise<void>;
+    deletePineconeVectors(documentId: string): Promise<void>;
+    reprocessDocument(documentId: string, options?: {
+        userId?: string;
+        asAdmin?: boolean;
+    }): Promise<{
+        success: boolean;
+        message: string;
+        document: {
+            id: string;
+            fileName: string;
+            processed: boolean;
+        };
+    }>;
     private storeChapters;
-    getChaptersBySubject(userId: string, subject: string): Promise<any>;
+    private formatChaptersResponse;
+    private normalizeChapterEntry;
+    private mergeChapters;
+    private collectChaptersFromDocuments;
+    getChaptersBySubject(userId: string, subject: string): Promise<{
+        subject: string;
+        totalChapters: number;
+        chapters: {
+            number: number;
+            name: string;
+        }[];
+        documentsFound: boolean;
+    }>;
 }

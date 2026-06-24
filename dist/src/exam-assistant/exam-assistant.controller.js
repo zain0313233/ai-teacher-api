@@ -24,9 +24,9 @@ let ExamAssistantController = class ExamAssistantController {
         this.examAssistantService = examAssistantService;
         this.prisma = prisma;
     }
-    async chat(req, body) {
-        const userId = req.user.id;
-        const profile = await this.prisma.studentProfile.findUnique({
+    async buildProfileContext(userId) {
+        const student = await this.prisma.studentProfile
+            .findUnique({
             where: { userId },
             select: {
                 educationLevel: true,
@@ -35,37 +35,83 @@ let ExamAssistantController = class ExamAssistantController {
                 board: true,
                 subjects: true,
                 targetExam: true,
+                learningLevel: true,
             },
-        }).catch(() => null);
+        })
+            .catch(() => null);
+        if (student) {
+            return {
+                education_level: student.educationLevel,
+                class_grade: student.classGrade ?? undefined,
+                classes_taught: student.classGrade ? [student.classGrade] : [],
+                group: student.group ?? undefined,
+                board: student.board ?? undefined,
+                subjects: student.subjects,
+                target_exam: student.targetExam ?? undefined,
+                learning_level: student.learningLevel ?? 3,
+            };
+        }
+        const teacher = await this.prisma.teacherProfile
+            .findUnique({
+            where: { userId },
+            select: {
+                subjectsTaught: true,
+                classesTaught: true,
+                board: true,
+            },
+        })
+            .catch(() => null);
+        if (teacher) {
+            return {
+                education_level: 'secondary',
+                class_grade: teacher.classesTaught?.[0] ?? undefined,
+                classes_taught: teacher.classesTaught ?? [],
+                board: teacher.board ?? undefined,
+                subjects: teacher.subjectsTaught,
+            };
+        }
+        return null;
+    }
+    async prepare(req, body) {
+        const userId = req.user.id;
+        const studentContext = await this.buildProfileContext(userId);
+        return this.examAssistantService.prepareExamGeneration({
+            userId,
+            message: body.message,
+            context: body.context,
+            studentContext,
+        });
+    }
+    async chat(req, body) {
+        const userId = req.user.id;
+        const studentContext = await this.buildProfileContext(userId);
         const result = await this.examAssistantService.chat({
             userId,
             message: body.message,
             context: body.context,
-            studentContext: profile ? {
-                education_level: profile.educationLevel,
-                class_grade: profile.classGrade ?? undefined,
-                group: profile.group ?? undefined,
-                board: profile.board ?? undefined,
-                subjects: profile.subjects,
-                target_exam: profile.targetExam ?? undefined,
-            } : null,
+            studentContext,
         });
         return result;
     }
     async getHistory(req) {
-        const result = await this.examAssistantService.getConversationHistory(req.user.id);
-        return result;
+        return this.examAssistantService.getConversationHistory(req.user.id);
     }
     async clearHistory(req) {
-        const result = await this.examAssistantService.clearConversationHistory(req.user.id);
-        return result;
+        return this.examAssistantService.clearConversationHistory(req.user.id);
     }
     async health() {
-        const result = await this.examAssistantService.healthCheck();
-        return result;
+        return this.examAssistantService.healthCheck();
     }
 };
 exports.ExamAssistantController = ExamAssistantController;
+__decorate([
+    (0, common_1.Post)('prepare'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], ExamAssistantController.prototype, "prepare", null);
 __decorate([
     (0, common_1.Post)('chat'),
     __param(0, (0, common_1.Request)()),

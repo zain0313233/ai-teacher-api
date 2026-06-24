@@ -88,6 +88,12 @@ let AdminController = class AdminController {
         }
         return this.adminService.getOfficialContent({ subject, documentType, search });
     }
+    async reprocessOfficialContent(documentId, req) {
+        if (req.user.role !== 'ADMIN') {
+            throw new Error('Unauthorized: Admin access required');
+        }
+        return this.adminService.reprocessOfficialContent(documentId);
+    }
     async deleteOfficialContent(documentId, req) {
         if (req.user.role !== 'ADMIN') {
             throw new Error('Unauthorized: Admin access required');
@@ -205,6 +211,14 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String, Object]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "getOfficialContent", null);
+__decorate([
+    (0, common_1.Post)('content/:id/reprocess'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "reprocessOfficialContent", null);
 __decorate([
     (0, common_1.Delete)('content/:id'),
     __param(0, (0, common_1.Param)('id')),

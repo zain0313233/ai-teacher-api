@@ -24,29 +24,43 @@ let PastPapersController = class PastPapersController {
         this.pastPapersService = pastPapersService;
     }
     async uploadPastPaper(req, file, metadata) {
-        const result = await this.pastPapersService.uploadPastPaper(req.user.id, file, metadata);
-        return result;
+        return this.pastPapersService.uploadPastPaper(req.user.id, file, metadata);
+    }
+    async getPatternCoverage(req, subject, chapters, mode) {
+        if (!subject) {
+            throw new common_1.BadRequestException('subject query parameter is required');
+        }
+        const chapterList = chapters
+            ? chapters
+                .split(',')
+                .map((c) => parseInt(c.trim(), 10))
+                .filter((n) => !isNaN(n))
+            : [];
+        return this.pastPapersService.getPatternCoverage(req.user.id, subject, chapterList, mode || 'smart');
     }
     async getUserPastPapers(req) {
         const pastPapers = await this.pastPapersService.getUserPastPapers(req.user.id);
-        return {
-            success: true,
-            pastPapers,
-        };
+        return { success: true, pastPapers };
     }
     async getPatterns(req, body) {
         const patterns = await this.pastPapersService.getPatterns(req.user.id, body.subject, body.chapters, body.mode || 'smart');
-        return {
-            success: true,
-            ...patterns,
-        };
+        return { success: true, ...patterns };
+    }
+    async getExtraction(req, id) {
+        return this.pastPapersService.getExtraction(id, req.user.id);
+    }
+    async triggerExtract(req, id, method) {
+        return this.pastPapersService.triggerExtract(id, req.user.id, method);
+    }
+    async approvePastPaper(req, id) {
+        return this.pastPapersService.approvePastPaper(id, req.user.id);
+    }
+    async rejectPastPaper(req, id) {
+        return this.pastPapersService.rejectPastPaper(id, req.user.id);
     }
     async deletePastPaper(req, id) {
         const result = await this.pastPapersService.deletePastPaper(id, req.user.id);
-        return {
-            success: true,
-            ...result,
-        };
+        return { success: true, ...result };
     }
 };
 exports.PastPapersController = PastPapersController;
@@ -69,6 +83,16 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], PastPapersController.prototype, "uploadPastPaper", null);
 __decorate([
+    (0, common_1.Get)('coverage'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('subject')),
+    __param(2, (0, common_1.Query)('chapters')),
+    __param(3, (0, common_1.Query)('mode')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String]),
+    __metadata("design:returntype", Promise)
+], PastPapersController.prototype, "getPatternCoverage", null);
+__decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -83,6 +107,39 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], PastPapersController.prototype, "getPatterns", null);
+__decorate([
+    (0, common_1.Get)(':id/extraction'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], PastPapersController.prototype, "getExtraction", null);
+__decorate([
+    (0, common_1.Post)(':id/extract'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Query)('method')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:returntype", Promise)
+], PastPapersController.prototype, "triggerExtract", null);
+__decorate([
+    (0, common_1.Post)(':id/approve'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], PastPapersController.prototype, "approvePastPaper", null);
+__decorate([
+    (0, common_1.Post)(':id/reject'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], PastPapersController.prototype, "rejectPastPaper", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     __param(0, (0, common_1.Request)()),

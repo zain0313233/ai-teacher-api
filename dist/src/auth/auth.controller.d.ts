@@ -11,9 +11,9 @@ export declare class AuthController {
         success: boolean;
         message: string;
         user: {
+            name: string;
             id: string;
             email: string;
-            name: string;
             role: import("@prisma/client").$Enums.UserRole;
             plan: import("@prisma/client").$Enums.PlanType;
             isVerified: boolean;
@@ -31,6 +31,11 @@ export declare class AuthController {
         userId: string;
     }): Promise<{
         message: string;
+        success: boolean;
+    }>;
+    verificationStatus(email: string): Promise<{
+        needsVerification: boolean;
+        userId: string | undefined;
         success: boolean;
     }>;
     login(loginDto: LoginDto): Promise<{
@@ -58,6 +63,7 @@ export declare class AuthController {
             schoolName: string | null;
             city: string | null;
             userId: string;
+            learningLevel: number;
             onboardingDone: boolean;
         } | {
             id: string;
@@ -73,6 +79,19 @@ export declare class AuthController {
             userId: string;
             onboardingDone: boolean;
         } | null;
+        success: boolean;
+    }>;
+    resetTokenStatus(token: string): Promise<{
+        valid: boolean;
+        reason: "INVALID";
+        success: boolean;
+    } | {
+        valid: boolean;
+        reason: "EXPIRED";
+        success: boolean;
+    } | {
+        valid: boolean;
+        reason?: undefined;
         success: boolean;
     }>;
     forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<{

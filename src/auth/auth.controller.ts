@@ -1,7 +1,9 @@
 import {
   Controller,
   Post,
+  Get,
   Body,
+  Query,
   HttpCode,
   HttpStatus,
   UseGuards,
@@ -51,10 +53,30 @@ export class AuthController {
     };
   }
 
+  @Get('verification-status')
+  @HttpCode(HttpStatus.OK)
+  async verificationStatus(@Query('email') email: string) {
+    const result = await this.authService.getVerificationStatus(email);
+    return {
+      success: true,
+      ...result,
+    };
+  }
+
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() loginDto: LoginDto) {
     const result = await this.authService.login(loginDto);
+    return {
+      success: true,
+      ...result,
+    };
+  }
+
+  @Get('reset-token-status')
+  @HttpCode(HttpStatus.OK)
+  async resetTokenStatus(@Query('token') token: string) {
+    const result = await this.authService.getResetTokenStatus(token);
     return {
       success: true,
       ...result,

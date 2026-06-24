@@ -4,6 +4,11 @@ export declare class ExamAssistantController {
     private readonly examAssistantService;
     private readonly prisma;
     constructor(examAssistantService: ExamAssistantService, prisma: PrismaService);
+    private buildProfileContext;
+    prepare(req: any, body: {
+        message: string;
+        context?: any;
+    }): Promise<any>;
     chat(req: any, body: {
         message: string;
         context?: any;

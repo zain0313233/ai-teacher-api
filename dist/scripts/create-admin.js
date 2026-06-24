@@ -41,9 +41,9 @@ const prisma = new client_1.PrismaClient();
 async function createAdmin() {
     try {
         console.log('🔧 Creating admin account...\n');
-        const adminEmail = 'zain.ali.cs.dev@gmail.com';
-        const adminPassword = 'ZainAdmin731@';
-        const adminName = 'Zain Ali (Admin)';
+        const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+        const adminPassword = process.env.ADMIN_PASSWORD || 'ChangeThisPassword123!';
+        const adminName = process.env.ADMIN_NAME || 'Admin User';
         const existingAdmin = await prisma.user.findUnique({
             where: { email: adminEmail },
         });
@@ -84,9 +84,9 @@ async function createAdmin() {
         console.log(`   💎 Plan: ${admin.plan}`);
         console.log(`   ✅ Verified: ${admin.isVerified}`);
         console.log(`   🆔 ID: ${admin.id}`);
-        console.log('\n🔐 Login Credentials:');
+        console.log('\n🔐 Login Credentials (from environment):');
         console.log(`   Email: ${adminEmail}`);
-        console.log(`   Password: ${adminPassword}`);
+        console.log(`   Password: [HIDDEN]`);
         console.log('\n🌐 Login URL: http://localhost:3000/login');
         console.log('   After login, you will be redirected to /admin/dashboard\n');
     }

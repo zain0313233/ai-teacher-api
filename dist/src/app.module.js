@@ -20,6 +20,13 @@ const patterns_module_1 = require("./patterns/patterns.module");
 const past_papers_module_1 = require("./past-papers/past-papers.module");
 const exam_assistant_module_1 = require("./exam-assistant/exam-assistant.module");
 const admin_module_1 = require("./admin/admin.module");
+const chat_module_1 = require("./chat/chat.module");
+const exam_genie_module_1 = require("./exam-genie/exam-genie.module");
+const classrooms_module_1 = require("./classrooms/classrooms.module");
+const notifications_module_1 = require("./notifications/notifications.module");
+const realtime_module_1 = require("./realtime/realtime.module");
+const class_chat_module_1 = require("./class-chat/class-chat.module");
+const question_banks_module_1 = require("./question-banks/question-banks.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -38,6 +45,13 @@ exports.AppModule = AppModule = __decorate([
             past_papers_module_1.PastPapersModule,
             exam_assistant_module_1.ExamAssistantModule,
             admin_module_1.AdminModule,
+            chat_module_1.ChatModule,
+            exam_genie_module_1.ExamGenieModule,
+            classrooms_module_1.ClassroomsModule,
+            notifications_module_1.NotificationsModule,
+            realtime_module_1.RealtimeModule,
+            class_chat_module_1.ClassChatModule,
+            question_banks_module_1.QuestionBanksModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

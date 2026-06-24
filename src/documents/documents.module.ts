@@ -8,6 +8,6 @@ import { PrismaModule } from '../prisma/prisma.module';
   imports: [PrismaModule],
   providers: [DocumentsService, SupabaseService],
   controllers: [DocumentsController],
-  exports: [DocumentsService],
+  exports: [DocumentsService, SupabaseService],
 })
 export class DocumentsModule {}

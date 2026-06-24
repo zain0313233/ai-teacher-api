@@ -12,45 +12,72 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SupabaseService = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_js_1 = require("@supabase/supabase-js");
+const promises_1 = require("fs/promises");
+const fs_1 = require("fs");
+const path_1 = require("path");
 let SupabaseService = class SupabaseService {
-    supabase;
+    supabase = null;
     bucketName = 'documents';
     constructor() {
         const supabaseUrl = process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
-        if (!supabaseUrl || !supabaseKey) {
-            throw new Error('Supabase credentials not found in environment variables');
+        if (supabaseUrl && supabaseKey) {
+            this.supabase = (0, supabase_js_1.createClient)(supabaseUrl, supabaseKey);
         }
-        this.supabase = (0, supabase_js_1.createClient)(supabaseUrl, supabaseKey);
     }
     async uploadFile(file) {
-        try {
-            const timestamp = Date.now();
-            const filename = `${timestamp}-${file.originalname}`;
-            const filePath = `uploads/${filename}`;
-            const { data, error } = await this.supabase.storage
-                .from(this.bucketName)
-                .upload(filePath, file.buffer, {
-                contentType: file.mimetype,
-                upsert: false,
-            });
-            if (error) {
-                console.error('Supabase upload error:', error);
-                throw error;
+        return this.uploadBuffer(file.buffer, file.originalname, file.mimetype || 'application/octet-stream');
+    }
+    async uploadLocal(buffer, originalName, folder) {
+        const dir = (0, path_1.join)(process.cwd(), 'uploads', folder);
+        if (!(0, fs_1.existsSync)(dir)) {
+            await (0, promises_1.mkdir)(dir, { recursive: true });
+        }
+        const timestamp = Date.now();
+        const safeName = originalName.replace(/[^\w.\-]+/g, '_');
+        const fileName = `${timestamp}-${safeName}`;
+        await (0, promises_1.writeFile)((0, path_1.join)(dir, fileName), buffer);
+        const port = process.env.PORT ?? 3001;
+        const base = (process.env.API_PUBLIC_URL || `http://localhost:${port}`).replace(/\/$/, '');
+        const urlPath = `${folder}/${fileName}`.replace(/\\/g, '/');
+        return `${base}/uploads/${urlPath}`;
+    }
+    async uploadBuffer(buffer, originalName, contentType, folder = 'uploads') {
+        if (!buffer?.length) {
+            throw new Error('Empty file buffer');
+        }
+        if (this.supabase) {
+            try {
+                const timestamp = Date.now();
+                const safeName = originalName.replace(/[^\w.\-]+/g, '_');
+                const filePath = `${folder}/${timestamp}-${safeName}`;
+                const { error } = await this.supabase.storage
+                    .from(this.bucketName)
+                    .upload(filePath, buffer, {
+                    contentType,
+                    upsert: false,
+                });
+                if (error) {
+                    throw error;
+                }
+                const { data: urlData } = this.supabase.storage
+                    .from(this.bucketName)
+                    .getPublicUrl(filePath);
+                return urlData.publicUrl;
             }
-            const { data: urlData } = this.supabase.storage
-                .from(this.bucketName)
-                .getPublicUrl(filePath);
-            return urlData.publicUrl;
+            catch (error) {
+                console.warn('Supabase upload failed, using local storage:', error.message);
+            }
         }
-        catch (error) {
-            console.error('Error uploading to Supabase:', error);
-            throw error;
-        }
+        return this.uploadLocal(buffer, originalName, folder);
     }
     async deleteFile(fileUrl) {
+        if (!this.supabase)
+            return;
         try {
             const filePath = this.extractFilePath(fileUrl);
+            if (!filePath)
+                return;
             const { error } = await this.supabase.storage
                 .from(this.bucketName)
                 .remove([filePath]);
