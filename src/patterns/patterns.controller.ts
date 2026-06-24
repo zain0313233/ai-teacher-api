@@ -42,6 +42,29 @@ export class PatternsController {
     return stats;
   }
 
+  @Get('available')
+  async getAvailablePatterns(
+    @Request() req,
+    @Query('subject') subject: string,
+    @Query('classGrade') classGrade?: string,
+    @Query('board') board?: string,
+  ) {
+    if (!subject?.trim()) {
+      return { success: true, patterns: [] };
+    }
+    if (req.user.role === 'TEACHER') {
+      return this.patternsService.getAvailablePatternsForTeacher(req.user.id, subject, {
+        classGrade,
+        board,
+      });
+    }
+    return this.patternsService.getAvailablePatternsForContext(req.user.id, subject, {
+      classGrade,
+      board,
+      includeTeacherPatterns: req.user.role === 'USER',
+    });
+  }
+
   @Get(':id')
   async getPattern(@Request() req, @Param('id') id: string) {
     const pattern = await this.patternsService.getPatternById(id, req.user.id);

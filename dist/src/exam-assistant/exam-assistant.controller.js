@@ -35,6 +35,7 @@ let ExamAssistantController = class ExamAssistantController {
                 board: true,
                 subjects: true,
                 targetExam: true,
+                learningLevel: true,
             },
         })
             .catch(() => null);
@@ -47,6 +48,7 @@ let ExamAssistantController = class ExamAssistantController {
                 board: student.board ?? undefined,
                 subjects: student.subjects,
                 target_exam: student.targetExam ?? undefined,
+                learning_level: student.learningLevel ?? 3,
             };
         }
         const teacher = await this.prisma.teacherProfile

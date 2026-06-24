@@ -87,6 +87,30 @@ export declare class DocumentsService {
         interactive: boolean;
         uploadDate: Date;
     }[]>;
+    getOfficialLibrary(filters: {
+        subject?: string;
+        board?: string;
+        language?: string;
+        search?: string;
+    }): Promise<{
+        success: boolean;
+        documents: {
+            id: string;
+            board: string | null;
+            year: number | null;
+            documentType: string;
+            educationSystem: string;
+            level: string;
+            class: string | null;
+            subject: string | null;
+            language: string;
+            fileName: string;
+            chapterNumber: number | null;
+            chapterName: string | null;
+            uploadDate: Date;
+        }[];
+        count: number;
+    }>;
     getDocumentById(documentId: string, userId: string): Promise<{
         id: string;
         board: string | null;

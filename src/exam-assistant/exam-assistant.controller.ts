@@ -30,6 +30,7 @@ export class ExamAssistantController {
           board: true,
           subjects: true,
           targetExam: true,
+          learningLevel: true,
         },
       })
       .catch(() => null);
@@ -43,6 +44,7 @@ export class ExamAssistantController {
         board: student.board ?? undefined,
         subjects: student.subjects,
         target_exam: student.targetExam ?? undefined,
+        learning_level: student.learningLevel ?? 3,
       };
     }
 

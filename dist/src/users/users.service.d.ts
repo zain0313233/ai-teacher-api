@@ -28,6 +28,7 @@ export declare class UsersService {
             schoolName: string | null;
             city: string | null;
             userId: string;
+            learningLevel: number;
             onboardingDone: boolean;
         } | null;
         teacherProfile: {
@@ -50,6 +51,9 @@ export declare class UsersService {
         role: import("@prisma/client").$Enums.UserRole;
         plan: import("@prisma/client").$Enums.PlanType;
         isVerified: boolean;
+        emailNotifyAssignments: boolean;
+        emailNotifyDueReminders: boolean;
+        inAppNotifications: boolean;
         createdAt: Date;
         updatedAt: Date;
     }>;
@@ -69,6 +73,7 @@ export declare class UsersService {
             schoolName: string | null;
             city: string | null;
             userId: string;
+            learningLevel: number;
             onboardingDone: boolean;
         } | null;
         teacherProfile: {
@@ -91,6 +96,9 @@ export declare class UsersService {
         role: import("@prisma/client").$Enums.UserRole;
         plan: import("@prisma/client").$Enums.PlanType;
         isVerified: boolean;
+        emailNotifyAssignments: boolean;
+        emailNotifyDueReminders: boolean;
+        inAppNotifications: boolean;
         createdAt: Date;
         updatedAt: Date;
     }>;

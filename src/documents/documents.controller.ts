@@ -121,6 +121,16 @@ export class DocumentsController {
     return chapters;
   }
 
+  @Get('official-library')
+  async getOfficialLibrary(
+    @Query('subject') subject?: string,
+    @Query('board') board?: string,
+    @Query('language') language?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.documentsService.getOfficialLibrary({ subject, board, language, search });
+  }
+
   @Get()
   async getUserDocuments(@Request() req) {
     const documents = await this.documentsService.getUserDocuments(req.user.id);

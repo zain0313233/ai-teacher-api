@@ -34,12 +34,12 @@ SELECT
   "createdAt",
   "updatedAt"
 FROM users 
-WHERE email = 'zain.ali.cs.dev@gmail.com';
+WHERE role = 'ADMIN';
 
 -- ============================================
 -- Expected output after update:
--- name: Zain Ali (Admin)
--- email: zain.ali.cs.dev@gmail.com
+-- name: [ADMIN_NAME]
+-- email: [ADMIN_EMAIL]
 -- role: ADMIN
 -- isVerified: true
 -- plan: PRO

@@ -1,14 +1,18 @@
 const axios = require('axios');
+require('dotenv').config(); // Load environment variables
 
 const API_URL = 'http://localhost:3001/api/auth';
 
 async function testAuthFlow() {
   try {
+    const testEmail = process.env.TEST_EMAIL || 'test@example.com';
+    const testPassword = process.env.TEST_PASSWORD || 'Test123456!';
+    
     console.log('🔄 Step 1: Registering user...');
     const registerResponse = await axios.post(`${API_URL}/register`, {
       name: 'Test User',
-      email: 'zain.ali.cs.dev@gmail.com',
-      password: 'Test123456!',
+      email: testEmail,
+      password: testPassword,
     });
     
     console.log('✅ Registration successful!');
@@ -23,7 +27,7 @@ async function testAuthFlow() {
     
     console.log('\n🔄 Step 2: Testing forgot password...');
     const forgotResponse = await axios.post(`${API_URL}/forgot-password`, {
-      email: 'zain.ali.cs.dev@gmail.com',
+      email: testEmail,
     });
     
     console.log('✅ Forgot password request sent!');

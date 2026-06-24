@@ -48,8 +48,22 @@ let AuthController = class AuthController {
             ...result,
         };
     }
+    async verificationStatus(email) {
+        const result = await this.authService.getVerificationStatus(email);
+        return {
+            success: true,
+            ...result,
+        };
+    }
     async login(loginDto) {
         const result = await this.authService.login(loginDto);
+        return {
+            success: true,
+            ...result,
+        };
+    }
+    async resetTokenStatus(token) {
+        const result = await this.authService.getResetTokenStatus(token);
         return {
             success: true,
             ...result,
@@ -110,6 +124,14 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "resendOtp", null);
 __decorate([
+    (0, common_1.Get)('verification-status'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Query)('email')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "verificationStatus", null);
+__decorate([
     (0, common_1.Post)('login'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Body)()),
@@ -117,6 +139,14 @@ __decorate([
     __metadata("design:paramtypes", [login_dto_1.LoginDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "login", null);
+__decorate([
+    (0, common_1.Get)('reset-token-status'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Query)('token')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "resetTokenStatus", null);
 __decorate([
     (0, common_1.Post)('forgot-password'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),

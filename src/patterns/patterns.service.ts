@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePatternDto } from './dto/create-pattern.dto';
 import { UpdatePatternDto } from './dto/update-pattern.dto';
@@ -9,6 +9,14 @@ import {
   detectSyllabusVariant,
   isPectaScienceSubject,
 } from './pecta-templates';
+import {
+  buildBoardTemplateFromCode,
+  builtInBoardPatternId,
+  legacyPectaPatternId,
+  normalizeTemplateSubject,
+  patternIdMatchesBuiltIn,
+  PatternDataDef,
+} from './board-templates';
 
 // Proper TypeScript interfaces
 interface DetectedContext {
@@ -158,6 +166,23 @@ export class PatternsService {
         totalMarks: builtInPecta.totalMarks,
         duration: builtInPecta.duration,
         sections: builtInPecta.sections,
+        instructions: 'Read all questions carefully. Answer all questions.',
+      };
+    }
+
+    const builtInBoard = await this.lookupBuiltInPatternTemplate(
+      normBoard || 'BISE Punjab',
+      subject,
+      cls || '9',
+      syllabusVariant,
+    );
+    if (builtInBoard) {
+      return {
+        name: builtInBoard.name,
+        subject: builtInBoard.subject,
+        totalMarks: builtInBoard.totalMarks,
+        duration: builtInBoard.duration,
+        sections: builtInBoard.sections,
         instructions: 'Read all questions carefully. Answer all questions.',
       };
     }
@@ -1164,5 +1189,366 @@ RULES:
       console.error('Custom pattern generation failed:', error);
       throw new Error('Failed to generate custom pattern');
     }
+  }
+
+  questionCountFromSections(sections: any[]): number {
+    return (sections || []).reduce(
+      (sum, s) => sum + (s.numberOfQuestions || s.questionsToAttempt || 0),
+      0,
+    );
+  }
+
+  private async lookupBuiltInPatternTemplate(
+    board: string,
+    subject: string,
+    classLevel: string,
+    syllabusVariant: 'pecta' | 'legacy' = 'legacy',
+  ): Promise<PatternDataDef | null> {
+    const normSubject = normalizeTemplateSubject(subject);
+    const cls = classLevel.replace(/\D/g, '') || classLevel;
+
+    const baseWhere = {
+      board,
+      classLevel: cls,
+      isVerified: true,
+      subject: { equals: normSubject, mode: 'insensitive' as const },
+    };
+
+    if (syllabusVariant === 'pecta' && isPectaScienceSubject(normSubject)) {
+      const pectaDb = await this.prisma.patternTemplate.findFirst({
+        where: {
+          ...baseWhere,
+          OR: [
+            { totalMarks: 60 },
+            { name: { contains: 'PECTA', mode: 'insensitive' } },
+          ],
+        },
+        orderBy: { confidence: 'desc' },
+      });
+      if (pectaDb) {
+        return {
+          name: pectaDb.name,
+          subject: pectaDb.subject,
+          totalMarks: pectaDb.totalMarks,
+          duration: pectaDb.duration,
+          sections: pectaDb.sections as PatternDataDef['sections'],
+        };
+      }
+    }
+
+    const dbTemplate = await this.prisma.patternTemplate.findFirst({
+      where: baseWhere,
+      orderBy: { confidence: 'desc' },
+    });
+    if (dbTemplate) {
+      return {
+        name: dbTemplate.name,
+        subject: dbTemplate.subject,
+        totalMarks: dbTemplate.totalMarks,
+        duration: dbTemplate.duration,
+        sections: dbTemplate.sections as PatternDataDef['sections'],
+      };
+    }
+
+    return buildBoardTemplateFromCode(board, 'Pakistan', normSubject, cls, syllabusVariant);
+  }
+
+  private toBuiltInPatternListItem(
+    template: PatternDataDef,
+    board: string,
+    classLevel: string,
+  ) {
+    const cls = classLevel.replace(/\D/g, '') || classLevel;
+    return {
+      id: builtInBoardPatternId(board, template.subject, cls),
+      name: template.name,
+      subject: template.subject,
+      totalMarks: template.totalMarks,
+      duration: template.duration,
+      sections: template.sections,
+      source: 'builtin' as const,
+    };
+  }
+
+  async getBuiltInPatternsForContext(
+    board: string | null | undefined,
+    subject: string,
+    classLevel: string | null | undefined,
+  ) {
+    const normBoard = this.normalizeBoardForPecta(board) || 'BISE Punjab';
+    const normSubject = normalizeTemplateSubject(subject);
+    const cls = (classLevel || '9').replace(/\D/g, '') || '9';
+    const syllabusVariant =
+      cls && ['9', '10'].includes(cls) ? ('pecta' as const) : ('legacy' as const);
+
+    const template = await this.lookupBuiltInPatternTemplate(
+      normBoard,
+      normSubject,
+      cls,
+      syllabusVariant,
+    );
+    if (!template) return [];
+    return [this.toBuiltInPatternListItem(template, normBoard, cls)];
+  }
+
+  async resolveBuiltInPattern(
+    patternId: string,
+    board: string | null | undefined,
+    subject: string,
+    classLevel: string | null | undefined,
+  ): Promise<PatternDataDef | null> {
+    const normBoard = this.normalizeBoardForPecta(board) || 'BISE Punjab';
+    const normSubject = normalizeTemplateSubject(subject);
+    const cls = (classLevel || '9').replace(/\D/g, '') || '9';
+    if (!patternIdMatchesBuiltIn(patternId, normBoard, normSubject, cls)) {
+      return null;
+    }
+    const syllabusVariant =
+      cls && ['9', '10'].includes(cls) ? ('pecta' as const) : ('legacy' as const);
+    return this.lookupBuiltInPatternTemplate(normBoard, normSubject, cls, syllabusVariant);
+  }
+
+  async getAvailablePatternsForContext(
+    userId: string,
+    subject: string,
+    options?: { classGrade?: string; board?: string; includeTeacherPatterns?: boolean },
+  ) {
+    const normSubject = normalizeTemplateSubject(subject);
+    const classLevel = options?.classGrade?.replace(/\D/g, '') || '9';
+    const board = options?.board;
+
+    const patterns: Array<{
+      id: string;
+      name: string;
+      subject: string;
+      totalMarks: number;
+      duration: number;
+      sections: unknown;
+      source: 'builtin' | 'teacher' | 'saved';
+    }> = [];
+
+    const builtIns = await this.getBuiltInPatternsForContext(board, normSubject, classLevel);
+    patterns.push(...builtIns);
+
+    if (options?.includeTeacherPatterns !== false) {
+      const enrollments = await this.prisma.classEnrollment.findMany({
+        where: { studentId: userId, status: 'active' },
+        include: { classroom: { select: { teacherId: true } } },
+      });
+      const teacherIds = [...new Set(enrollments.map((e) => e.classroom.teacherId))];
+
+      const teacherPatterns = teacherIds.length
+        ? await this.prisma.pattern.findMany({
+            where: {
+              userId: { in: teacherIds },
+              subject: { equals: normSubject, mode: 'insensitive' },
+            },
+            orderBy: [{ lastUsed: 'desc' }, { updatedAt: 'desc' }],
+          })
+        : [];
+
+      for (const p of teacherPatterns) {
+        patterns.push({
+          id: p.id,
+          name: p.name,
+          subject: p.subject,
+          totalMarks: p.totalMarks,
+          duration: p.duration,
+          sections: p.sections,
+          source: 'teacher',
+        });
+      }
+    }
+
+    const savedPatterns = await this.prisma.pattern.findMany({
+      where: {
+        userId,
+        subject: { equals: normSubject, mode: 'insensitive' },
+      },
+      orderBy: [{ lastUsed: 'desc' }, { updatedAt: 'desc' }],
+    });
+    for (const p of savedPatterns) {
+      if (patterns.some((row) => row.id === p.id)) continue;
+      patterns.push({
+        id: p.id,
+        name: p.name,
+        subject: p.subject,
+        totalMarks: p.totalMarks,
+        duration: p.duration,
+        sections: p.sections,
+        source: 'saved',
+      });
+    }
+
+    return { success: true, patterns };
+  }
+
+  async resolvePatternForAssignment(
+    userId: string,
+    patternId: string,
+    subject: string,
+    options?: { classGrade?: string; board?: string },
+  ) {
+    if (patternId.startsWith('builtin:')) {
+      const teacherProfile = await this.prisma.teacherProfile.findUnique({
+        where: { userId },
+      });
+      const classLevel =
+        options?.classGrade?.replace(/\D/g, '') ||
+        teacherProfile?.classesTaught?.[0]?.replace(/\D/g, '') ||
+        '9';
+      const board = options?.board || teacherProfile?.board || 'punjab';
+      const builtIn = await this.resolveBuiltInPattern(
+        patternId,
+        board,
+        subject,
+        classLevel,
+      );
+      if (!builtIn) {
+        throw new NotFoundException('Built-in pattern not available for this subject/board');
+      }
+      return {
+        patternId,
+        name: builtIn.name,
+        subject: builtIn.subject,
+        totalMarks: builtIn.totalMarks,
+        duration: builtIn.duration,
+        sections: builtIn.sections,
+        isBuiltIn: true,
+      };
+    }
+
+    const pattern = await this.getPatternById(patternId, userId);
+    return {
+      patternId: pattern.id,
+      name: pattern.name,
+      subject: pattern.subject,
+      totalMarks: pattern.totalMarks,
+      duration: pattern.duration,
+      sections: pattern.sections,
+      isBuiltIn: false,
+    };
+  }
+
+  /** @deprecated use builtInBoardPatternId — kept for legacy builtin:pecta IDs */
+  private builtInPatternId(subject: string, classLevel: string) {
+    return legacyPectaPatternId(subject, classLevel);
+  }
+
+  async getAvailablePatternsForStudent(userId: string, subject: string) {
+    const profile = await this.prisma.studentProfile.findUnique({
+      where: { userId },
+    });
+    const classLevel = profile?.classGrade?.replace(/\D/g, '') || '9';
+    const board = profile?.board || 'punjab';
+
+    return this.getAvailablePatternsForContext(userId, subject, {
+      classGrade: classLevel,
+      board,
+      includeTeacherPatterns: true,
+    });
+  }
+
+  async getAvailablePatternsForTeacher(
+    userId: string,
+    subject: string,
+    options?: { classGrade?: string; board?: string },
+  ) {
+    const teacherProfile = await this.prisma.teacherProfile.findUnique({
+      where: { userId },
+    });
+    const classLevel =
+      options?.classGrade?.replace(/\D/g, '') ||
+      teacherProfile?.classesTaught?.[0]?.replace(/\D/g, '') ||
+      '9';
+    const board = options?.board || teacherProfile?.board || 'punjab';
+
+    const result = await this.getAvailablePatternsForContext(userId, subject, {
+      classGrade: classLevel,
+      board,
+      includeTeacherPatterns: false,
+    });
+
+    const ownPatterns = await this.prisma.pattern.findMany({
+      where: {
+        userId,
+        subject: { equals: normalizeTemplateSubject(subject), mode: 'insensitive' },
+      },
+      orderBy: [{ lastUsed: 'desc' }, { updatedAt: 'desc' }],
+    });
+
+    const merged = [...result.patterns];
+    for (const p of ownPatterns) {
+      if (merged.some((row) => row.id === p.id)) continue;
+      merged.unshift({
+        id: p.id,
+        name: p.name,
+        subject: p.subject,
+        totalMarks: p.totalMarks,
+        duration: p.duration,
+        sections: p.sections,
+        source: 'saved',
+      });
+    }
+
+    return { success: true, patterns: merged };
+  }
+
+  async resolvePatternForStudentQuiz(
+    userId: string,
+    patternId: string,
+    subject: string,
+  ) {
+    if (patternId.startsWith('builtin:')) {
+      const profile = await this.prisma.studentProfile.findUnique({
+        where: { userId },
+      });
+      const classLevel = profile?.classGrade?.replace(/\D/g, '') || '9';
+      const board = profile?.board || 'punjab';
+      const builtIn = await this.resolveBuiltInPattern(
+        patternId,
+        board,
+        subject,
+        classLevel,
+      );
+      if (!builtIn) {
+        throw new NotFoundException('Built-in pattern not available for your grade/board');
+      }
+      return {
+        patternId,
+        ...this.toGenerationPayload({
+          name: builtIn.name,
+          subject: builtIn.subject,
+          totalMarks: builtIn.totalMarks,
+          duration: builtIn.duration,
+          sections: builtIn.sections,
+        }),
+      };
+    }
+
+    const pattern = await this.prisma.pattern.findUnique({
+      where: { id: patternId },
+    });
+    if (!pattern) {
+      throw new NotFoundException('Pattern not found');
+    }
+
+    if (pattern.userId !== userId) {
+      const teacherAccess = await this.prisma.classEnrollment.findFirst({
+        where: {
+          studentId: userId,
+          status: 'active',
+          classroom: { teacherId: pattern.userId },
+        },
+      });
+      if (!teacherAccess) {
+        throw new ForbiddenException('You do not have access to this pattern');
+      }
+    }
+
+    return {
+      patternId: pattern.id,
+      ...this.toGenerationPayload(pattern),
+    };
   }
 }

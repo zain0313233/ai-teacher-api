@@ -77,6 +77,9 @@ let DocumentsController = class DocumentsController {
         const chapters = await this.documentsService.getChaptersBySubject(req.user.id, subject);
         return chapters;
     }
+    async getOfficialLibrary(subject, board, language, search) {
+        return this.documentsService.getOfficialLibrary({ subject, board, language, search });
+    }
     async getUserDocuments(req) {
         const documents = await this.documentsService.getUserDocuments(req.user.id);
         return documents;
@@ -125,6 +128,16 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], DocumentsController.prototype, "getChapters", null);
+__decorate([
+    (0, common_1.Get)('official-library'),
+    __param(0, (0, common_1.Query)('subject')),
+    __param(1, (0, common_1.Query)('board')),
+    __param(2, (0, common_1.Query)('language')),
+    __param(3, (0, common_1.Query)('search')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, String]),
+    __metadata("design:returntype", Promise)
+], DocumentsController.prototype, "getOfficialLibrary", null);
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Request)()),

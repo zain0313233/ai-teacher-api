@@ -310,6 +310,59 @@ export class DocumentsService {
 
   }
 
+  async getOfficialLibrary(filters: {
+    subject?: string;
+    board?: string;
+    language?: string;
+    search?: string;
+  }) {
+    const where: Record<string, unknown> = {
+      isOfficial: true,
+      processed: true,
+      verified: true,
+    };
+
+    if (filters.subject?.trim()) {
+      where.subject = { equals: filters.subject.trim(), mode: 'insensitive' };
+    }
+    if (filters.board?.trim()) {
+      where.board = { contains: filters.board.trim(), mode: 'insensitive' };
+    }
+    if (filters.language?.trim()) {
+      where.language = filters.language.trim();
+    }
+    if (filters.search?.trim()) {
+      const term = filters.search.trim();
+      where.OR = [
+        { fileName: { contains: term, mode: 'insensitive' } },
+        { chapterName: { contains: term, mode: 'insensitive' } },
+        { subject: { contains: term, mode: 'insensitive' } },
+      ];
+    }
+
+    const documents = await this.prisma.document.findMany({
+      where,
+      orderBy: [{ subject: 'asc' }, { uploadDate: 'desc' }],
+      select: {
+        id: true,
+        fileName: true,
+        subject: true,
+        board: true,
+        class: true,
+        level: true,
+        language: true,
+        documentType: true,
+        chapterNumber: true,
+        chapterName: true,
+        uploadDate: true,
+        year: true,
+        educationSystem: true,
+      },
+    });
+
+    return { success: true, documents, count: documents.length };
+  }
+
 
 
   async getDocumentById(documentId: string, userId: string) {
